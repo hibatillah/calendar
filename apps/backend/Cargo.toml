@@ -1,0 +1,30 @@
+[package]
+name = "randevu-backend"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+calendar-core.workspace = true
+randevu-telemetry.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+sqlx.workspace = true
+axum = "0.8"
+async-graphql = "7"
+async-graphql-axum = "7"
+thiserror = "2"
+reqwest.workspace = true
+dotenvy = "0.15"
+sha2 = "0.10"
+base64 = "0.22"
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+

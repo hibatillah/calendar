@@ -1,0 +1,10 @@
+[package]
+name = "calendar-layout"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+calendar-core.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+

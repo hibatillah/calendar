@@ -1,0 +1,27 @@
+[package]
+name = "randevu-desktop"
+version.workspace = true
+edition.workspace = true
+
+[features]
+ui-tests = ["gpui-kit/test-support"]
+
+[dependencies]
+gpui-kit = { version = "=0.7.1", default-features = false, features = ["component", "assets"] }
+calendar-core.workspace = true
+calendar-layout.workspace = true
+randevu-telemetry.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+reqwest.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+tray-icon = "0.21"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_UI_HiDpi"] }
+

@@ -1,0 +1,197 @@
+type Account {
+	id: String!
+	name: String!
+	email: String!
+	picture: String!
+	eventAccess: Boolean!
+	writeAccess: Boolean!
+	connecting: Boolean!
+	message: String!
+	calendars: [GoogleCalendar!]!
+}
+
+type Connection {
+	configured: Boolean!
+	connected: Boolean!
+	eventAccess: Boolean!
+	accountKey: String!
+	connecting: Boolean!
+	message: String!
+	calendars: [GoogleCalendar!]!
+	accounts: [Account!]!
+}
+
+"""
+A Google calendar event. Editing depends on account permissions and calendar access.
+"""
+input EventInput {
+	"""
+	Stable event identifier. Generate a UUID for a new event.
+	"""
+	eventId: String!
+	"""
+	Provider calendar identifier.
+	"""
+	calendarId: String!
+	"""
+	Non-empty title, at most 1000 UTF-8 bytes.
+	"""
+	title: String!
+	"""
+	Inclusive start instant in RFC 3339 format, including a UTC offset.
+	"""
+	start: String!
+	"""
+	Exclusive end instant in RFC 3339 format; must be after start.
+	"""
+	end: String!
+	"""
+	IANA time zone used to display and edit local times, for example Asia/Jakarta.
+	"""
+	timezone: String!
+	"""
+	All-day events use an exclusive end date.
+	"""
+	allDay: Boolean!
+	"""
+	Optional notes, represented as an empty string when absent; maximum 16000 UTF-8 bytes.
+	"""
+	description: String!
+	"""
+	Location or meeting URL; empty when absent.
+	"""
+	location: String!
+	"""
+	Non-negative RGB integer, for example 9215736.
+	"""
+	color: Int!
+	"""
+	Server-managed revision. Use expectedRevision for concurrency checks.
+	"""
+	revision: Int!
+	"""
+	Whether edits are forbidden for this stored event.
+	"""
+	readOnly: Boolean!
+}
+
+"""
+A Google calendar event. Editing depends on account permissions and calendar access.
+"""
+type EventRecord {
+	"""
+	Stable event identifier. Generate a UUID for a new event.
+	"""
+	eventId: String!
+	"""
+	Provider calendar identifier.
+	"""
+	calendarId: String!
+	"""
+	Non-empty title, at most 1000 UTF-8 bytes.
+	"""
+	title: String!
+	"""
+	Inclusive start instant in RFC 3339 format, including a UTC offset.
+	"""
+	start: String!
+	"""
+	Exclusive end instant in RFC 3339 format; must be after start.
+	"""
+	end: String!
+	"""
+	IANA time zone used to display and edit local times, for example Asia/Jakarta.
+	"""
+	timezone: String!
+	"""
+	All-day events use an exclusive end date.
+	"""
+	allDay: Boolean!
+	"""
+	Optional notes, represented as an empty string when absent; maximum 16000 UTF-8 bytes.
+	"""
+	description: String!
+	"""
+	Location or meeting URL; empty when absent.
+	"""
+	location: String!
+	"""
+	Non-negative RGB integer, for example 9215736.
+	"""
+	color: Int!
+	"""
+	Server-managed revision. Use expectedRevision for concurrency checks.
+	"""
+	revision: Int!
+	"""
+	Whether edits are forbidden for this stored event.
+	"""
+	readOnly: Boolean!
+}
+
+type GoogleCalendar {
+	id: String!
+	summary: String!
+	primary: Boolean!
+	accessRole: String!
+	backgroundColor: String!
+	timeZone: String!
+}
+
+type Mutation {
+	"""
+	Start Desktop OAuth with PKCE. Omit accountId to add an account; provide it to renew permissions. Open the returned URL in the system browser.
+	"""
+	connectGoogle(accountId: String): String!
+	"""
+	Remove local Google credentials and attempt to revoke the Google grant. Also cancels pending sign-in.
+	"""
+	disconnectGoogle(accountId: String): Boolean!
+	"""
+	Create or update a Google event. Retries use stable creation IDs and provider operation markers; updates use ETags.
+	Reusing that ID with different data or saving an outdated revision returns extensions.code CONFLICT.
+	Validation failures return INVALID_EVENT; stored read-only events return READ_ONLY.
+	"""
+	saveEvent(
+		"""
+		Unique command ID. Reuse only for an identical retry; generate a new UUID for each edit.
+		"""
+		operationId: String!,
+		"""
+		Use -1 to create a new event; use its current revision to update it.
+		"""
+		expectedRevision: Int!,
+		"""
+		Complete event values. The returned revision is authoritative.
+		"""
+		event: EventInput!
+	): EventRecord!
+}
+
+type Query {
+	"""
+	Google account connection, event permission status, and discovered calendars.
+	"""
+	googleConnection: Connection!
+	"""
+	Google-backed calendar with local offline caching in the desktop.
+	"""
+	mode: String!
+	"""
+	Load expanded Google occurrences across connected accounts in a bounded date range.
+	"""
+	events(startDate: String, endDate: String): [EventRecord!]!
+}
+
+"""
+Directs the executor to include this field or fragment only when the `if` argument is true.
+"""
+directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Directs the executor to skip this field or fragment when the `if` argument is true.
+"""
+directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+schema {
+	query: Query
+	mutation: Mutation
+}

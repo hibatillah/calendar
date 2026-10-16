@@ -28,6 +28,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: ./scripts/cargo.ps1 fmt --all '--' --check
+      - name: Desktop watcher checks
+        run: ./scripts/test-dev-desktop.ps1
       - name: Tests including GPUI interactions
         run: ./scripts/cargo.ps1 test --locked --workspace --features calendar-desktop/ui-tests
       - name: Clippy

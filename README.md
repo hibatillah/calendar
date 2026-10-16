@@ -19,6 +19,16 @@ The script builds both applications, starts the backend at `127.0.0.1:47821`, an
 ./scripts/cargo.ps1 run -p calendar-desktop
 ```
 
+For automatic GPUI rebuild/restart during development:
+
+```powershell
+./scripts/dev-desktop.ps1
+```
+
+The watcher debounces changes to Rust sources, Cargo manifests and bundled assets. It builds incrementally, keeps the last working app open when compilation fails, and restarts only binaries whose contents changed. Backend-only changes do not restart the desktop. Changes saved during compilation trigger another build. A one-time handoff moves any existing debug processes to copies in `.local/dev-desktop/`, releasing Windows executable locks while preserving Cargo's warm cache. Run only one watcher per checkout; avoid `start.ps1` or concurrent Cargo builds while it is active.
+
+This is automatic rebuild/restart, not in-process hot reload: saved settings, accounts and caches survive, but unsaved forms, scroll position and transient UI state reset. Avoid saving source while an event write is pending. Ctrl+C stops watching and leaves the apps running. `-Once` builds/restarts once for validation. PowerShell 7 is also usable on macOS, but this watcher has only been exercised on Windows.
+
 Run commands from the repository root. State and logs go into ignored `.local/`. Protected API endpoints requires the local token in `.local/session-token`; it is not intended to be exposed to the network. There is no hosted backend. Optional PostHog uploads are disabled until explicitly configured; see [telemetry](docs/telemetry.md).
 
 ## Current preview

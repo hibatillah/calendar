@@ -13,11 +13,13 @@ import {
   type EventInput,
   type Transport,
 } from "./index";
+
 export interface SnapshotStorage {
   read(key: string): Promise<CalendarSnapshotQuery | undefined>;
   write(key: string, value: CalendarSnapshotQuery): Promise<void>;
   clear(): Promise<void>;
 }
+
 export function replaceOptimisticEvent(
   snapshot: CalendarSnapshotQuery,
   event: EventInput,
@@ -25,13 +27,12 @@ export function replaceOptimisticEvent(
   return {
     ...snapshot,
     events: [
-      ...snapshot.events.filter(
-        (previous) => previous.eventId !== event.eventId,
-      ),
+      ...snapshot.events.filter((previous) => previous.eventId !== event.eventId),
       event,
     ],
   };
 }
+
 export function useCalendar(
   transport: Transport,
   firstDay: string,
@@ -51,9 +52,12 @@ export function useCalendar(
     retry: false,
     refetchInterval: 30_000,
   });
+
   useEffect(() => {
     let active = true;
+
     if (!enabled) return;
+
     storage
       .read(storageKey)
       .then((snapshot) => {
@@ -61,6 +65,7 @@ export function useCalendar(
           queryClient.setQueryData(queryKey, snapshot, { updatedAt: 1 });
       })
       .catch(() => {});
+
     return () => {
       active = false;
     };
@@ -69,6 +74,7 @@ export function useCalendar(
     if (enabled && query.data && !query.isError && pendingWrites === 0)
       storage.write(storageKey, query.data).catch(() => {});
   }, [query.data, query.isError, storageKey, storage, pendingWrites, enabled]);
+
   const save = useMutation({
     mutationKey: ["calendar-save"],
     mutationFn: (command: {
@@ -78,14 +84,16 @@ export function useCalendar(
     }) => transport(SaveCalendarEventDocument, command),
     onMutate: async ({ event }) => {
       await queryClient.cancelQueries({ queryKey: ["calendar"] });
+
       const snapshots = queryClient.getQueriesData<CalendarSnapshotQuery>({
         queryKey: ["calendar"],
       });
+
       queryClient.setQueriesData<CalendarSnapshotQuery>(
         { queryKey: ["calendar"] },
-        (previous) =>
-          previous ? replaceOptimisticEvent(previous, event) : previous,
+        (previous) => (previous ? replaceOptimisticEvent(previous, event) : previous),
       );
+
       return { snapshots };
     },
     onError: (_error, _command, context) => {
@@ -112,5 +120,6 @@ export function useCalendar(
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["calendar"] }),
   });
+
   return { ...query, save };
 }

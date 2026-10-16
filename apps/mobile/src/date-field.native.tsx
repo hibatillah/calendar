@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import {
-  clockTime,
-  dateKey,
-  DISPLAY_ZONE,
-  localInstant,
-} from "@calendar/calendar";
+import { clockTime, dateKey, DISPLAY_ZONE, localInstant } from "@calendar/calendar";
 import type { DateFieldProps } from "./date-field";
 
 export function DateField({
@@ -19,29 +14,28 @@ export function DateField({
   const [mode, setMode] = useState<"date" | "time" | null>(null);
   const [date, time] = value.trim().split(/\s+/);
   const selected = new Date(localInstant(date, time || "00:00"));
+
   return (
     <View style={{ gap: 8 }}>
       <View style={{ flexDirection: "row", gap: 12 }}>
-        {(["date", ...(allDay ? [] : ["time"])] as ("date" | "time")[]).map(
-          (part) => (
-            <Pressable
-              key={part}
-              accessibilityRole="button"
-              accessibilityLabel={`${label}: ${part}`}
-              disabled={disabled}
-              onPress={() => setMode(part)}
-              style={{
-                padding: 12,
-                backgroundColor: "#303030",
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ fontFamily: "Inter", color: "#e9e9e9" }}>
-                {part === "date" ? date : time}
-              </Text>
-            </Pressable>
-          ),
-        )}
+        {(["date", ...(allDay ? [] : ["time"])] as ("date" | "time")[]).map((part) => (
+          <Pressable
+            key={part}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}: ${part}`}
+            disabled={disabled}
+            onPress={() => setMode(part)}
+            style={{
+              padding: 12,
+              backgroundColor: "#303030",
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ fontFamily: "Inter", color: "#e9e9e9" }}>
+              {part === "date" ? date : time}
+            </Text>
+          </Pressable>
+        ))}
       </View>
       {mode && !disabled && (
         <DateTimePicker
@@ -53,6 +47,7 @@ export function DateField({
           is24Hour
           onChange={(event, nextDate) => {
             if (Platform.OS === "android") setMode(null);
+
             if (event.type === "set" && nextDate)
               onChange(
                 `${dateKey(nextDate)} ${allDay ? "00:00" : clockTime(nextDate.toISOString())}`,

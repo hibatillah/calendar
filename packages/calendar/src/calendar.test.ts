@@ -8,12 +8,8 @@ import {
   startOfWeek,
   timedPlacement,
 } from "./index";
-const event = (
-  eventId: string,
-  start: string,
-  end: string,
-  allDay = false,
-) => ({
+
+const event = (eventId: string, start: string, end: string, allDay = false) => ({
   eventId,
   calendarId: "account|calendar",
   title: "Fixture",
@@ -23,6 +19,7 @@ const event = (
   color: 123,
   readOnly: false,
 });
+
 describe("calendar dates", () => {
   it("Today selects the containing week for Monday and Sunday preferences", () => {
     expect(startOfWeek("2026-10-15", 1)).toBe("2026-10-12");
@@ -31,6 +28,7 @@ describe("calendar dates", () => {
   });
   it("includes leap day and complete month weeks", () => {
     const dates = monthDays("2024-02-15");
+
     expect(dates).toContain("2024-02-29");
     expect(dates.length % 7).toBe(0);
     expect(addDays("2024-02-28", 1)).toBe("2024-02-29");
@@ -40,12 +38,8 @@ describe("calendar dates", () => {
     expect(dateKey(new Date("2026-10-14T18:00:00Z"))).toBe("2026-10-15");
   });
   it("rejects both DST gaps and repeated local times", () => {
-    expect(() =>
-      localInstant("2026-03-08", "02:30", "America/New_York"),
-    ).toThrow();
-    expect(() =>
-      localInstant("2026-11-01", "01:30", "America/New_York"),
-    ).toThrow();
+    expect(() => localInstant("2026-03-08", "02:30", "America/New_York")).toThrow();
+    expect(() => localInstant("2026-11-01", "01:30", "America/New_York")).toThrow();
   });
   it("preserves exclusive all-day ends and sorts all-day before timed events", () => {
     const events = [
@@ -61,9 +55,11 @@ describe("calendar dates", () => {
         true,
       ),
     ];
-    expect(
-      eventsOnDay(events, "2026-10-15").map((event) => event.eventId),
-    ).toEqual(["all-day", "timed"]);
+
+    expect(eventsOnDay(events, "2026-10-15").map((event) => event.eventId)).toEqual([
+      "all-day",
+      "timed",
+    ]);
     expect(eventsOnDay(events, "2026-10-16")).toEqual([]);
   });
   it("clips cross-midnight events and overlaps concurrent lanes slightly", () => {
@@ -80,6 +76,7 @@ describe("calendar dates", () => {
       ),
     ];
     const positions = timedPlacement(events, "2026-10-15");
+
     expect(positions[0].top).toBe(0);
     expect(positions[0].height).toBe(120);
     expect(positions[0].width).toBeGreaterThan(positions[1].left);

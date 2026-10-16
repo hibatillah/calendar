@@ -6,6 +6,7 @@ export function reminderPlan(
   now = Date.now(),
 ) {
   if (minutes === null) return [];
+
   return events
     .filter((event) => !event.allDay)
     .map((event) => ({
@@ -17,8 +18,7 @@ export function reminderPlan(
     .filter((reminder) => reminder.fireAt > now)
     .sort(
       (first, second) =>
-        first.fireAt - second.fireAt ||
-        first.eventId.localeCompare(second.eventId),
+        first.fireAt - second.fireAt || first.eventId.localeCompare(second.eventId),
     )
     .slice(0, 50);
 }

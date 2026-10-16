@@ -5,7 +5,9 @@ import {
   type CalendarSnapshotQuery,
 } from "./index";
 import { replaceOptimisticEvent } from "./react";
+
 afterEach(() => vi.unstubAllGlobals());
+
 it("surfaces GraphQL failures rather than treating HTTP 200 as success", async () => {
   vi.stubGlobal(
     "fetch",
@@ -22,6 +24,7 @@ it("surfaces GraphQL failures rather than treating HTTP 200 as success", async (
     }),
   ).rejects.toThrow("READ_ONLY");
 });
+
 it("replaces an optimistic event by identity instead of duplicating it", () => {
   const event = {
     eventId: "event",
@@ -51,6 +54,7 @@ it("replaces an optimistic event by identity instead of duplicating it", () => {
     ...event,
     start: "2026-10-16T01:00:00Z",
   });
+
   expect(updated.events).toHaveLength(1);
   expect(updated.events[0].start).toContain("2026-10-16");
   expect(snapshot.events[0].start).toContain("2026-10-15");

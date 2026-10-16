@@ -63,6 +63,7 @@ struct Configuration {
     project_token: String,
     host: String,
 }
+
 impl Configuration {
     fn load() -> Result<Self, &'static str> {
         let dotenv: HashMap<String, String> = match dotenvy::from_path_iter(".env") {
@@ -89,6 +90,7 @@ impl Configuration {
         configuration.validate()?;
         Ok(configuration)
     }
+
     fn from_values(value: impl Fn(&str) -> Option<String>) -> Result<Option<Self>, &'static str> {
         let enabled = value("POSTHOG_ENABLED");
         let token = value("POSTHOG_PROJECT_TOKEN");
@@ -108,6 +110,7 @@ impl Configuration {
         configuration.validate()?;
         Ok(Some(configuration))
     }
+
     fn validate(&self) -> Result<(), &'static str> {
         if self.enabled
             && (!self.project_token.starts_with("phc_")
@@ -133,6 +136,7 @@ pub struct TelemetryGuard {
     _file: tracing_appender::non_blocking::WorkerGuard,
     providers: Option<(SdkLoggerProvider, SdkTracerProvider)>,
 }
+
 impl Drop for TelemetryGuard {
     fn drop(&mut self) {
         if let Some((logs, traces)) = self.providers.take() {
@@ -311,6 +315,7 @@ impl Visit for SafeFields {
         }
     }
 }
+
 struct ActivityLayer {
     component: String,
     logger: Option<SdkLogger>,
@@ -386,6 +391,7 @@ where
         }
     }
 }
+
 fn push_bounded(records: &mut VecDeque<LogEntry>, entry: LogEntry) {
     if records.len() >= CAPACITY {
         records.pop_front();
@@ -426,12 +432,14 @@ pub fn outgoing_trace_headers() -> HashMap<String, String> {
     TraceContextPropagator::new().inject_context(&tracing::Span::current().context(), &mut headers);
     headers.0
 }
+
 pub fn accept_trace_parent(span: &tracing::Span, parent: &str) {
     struct Parent<'a>(&'a str);
     impl Extractor for Parent<'_> {
         fn get(&self, key: &str) -> Option<&str> {
             (key == "traceparent").then_some(self.0)
         }
+
         fn keys(&self) -> Vec<&str> {
             vec!["traceparent"]
         }
@@ -471,6 +479,7 @@ mod tests {
         );
         assert!(Configuration::from_values(|_| None).unwrap().is_none());
     }
+
     #[test]
     fn exporters_send_analytics_errors_logs_and_linked_traces_to_local_receiver() {
         use std::io::{Read, Write};
@@ -594,6 +603,7 @@ mod tests {
         logs.shutdown().unwrap();
         traces.shutdown().unwrap();
     }
+
     #[test]
     fn configuration_is_disabled_by_default_and_rejects_secrets_and_arbitrary_hosts() {
         assert!(!Configuration::default().enabled);
@@ -612,6 +622,7 @@ mod tests {
             );
         }
     }
+
     #[test]
     fn ring_keeps_only_latest_entries() {
         let mut records = VecDeque::new();
@@ -630,6 +641,7 @@ mod tests {
         assert_eq!(records.len(), 500);
         assert_eq!(records.front().unwrap().action, "100");
     }
+
     #[test]
     fn diagnostic_fields_exclude_calendar_content_and_credentials() {
         struct Capture;

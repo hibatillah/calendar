@@ -18,6 +18,7 @@ struct Preferences {
     sunday_first: bool,
     tray_all_day: bool,
 }
+
 impl Preferences {
     fn load() -> Self {
         std::fs::read_to_string(".local/preferences.json")
@@ -28,6 +29,7 @@ impl Preferences {
                 tray_all_day: true,
             })
     }
+
     fn save(&self) {
         let _ = std::fs::write(".local/preferences.json", serde_json::to_vec(self).unwrap());
     }
@@ -48,12 +50,14 @@ enum GestureKind {
     End,
     Create,
 }
+
 struct Gesture {
     kind: GestureKind,
     event: CalendarEvent,
     origin: Point<Pixels>,
     changed: bool,
 }
+
 pub struct CalendarApp {
     preferences: Preferences,
     settings_open: bool,
@@ -106,6 +110,7 @@ impl CalendarApp {
         self.horizontal_fraction = 0.0;
         self.edit(event, window, context);
     }
+
     pub fn new(window: &mut Window, context: &mut Context<Self>, agenda_only: bool) -> Self {
         let timezone = chrono_tz::Asia::Jakarta;
         let preferences = Preferences::load();
@@ -157,6 +162,7 @@ impl CalendarApp {
                 })
                 .detach();
         }
+
         #[cfg(not(test))]
         let connection = service::start();
         #[cfg(test)]
@@ -297,6 +303,7 @@ impl CalendarApp {
         };
         self.horizontal_fraction = 0.0;
     }
+
     fn display_month_cells(&self) -> Vec<NaiveDate> {
         let first = self.date.with_day(1).unwrap();
         let start = week_start(first, self.preferences.sunday_first);
@@ -304,6 +311,7 @@ impl CalendarApp {
             .map(|offset| start + Duration::days(offset))
             .collect()
     }
+
     fn calendar_visible(&self, event: &CalendarEvent) -> bool {
         !self.hidden_calendars.contains(&event.calendar_id)
     }
@@ -2214,6 +2222,7 @@ fn button(identifier: &'static str, label: &'static str) -> Stateful<Div> {
         .hover(|style| style.bg(rgb(0xffffff).opacity(0.07)))
         .child(label)
 }
+
 fn calendar_toggle(
     identifier: SharedString,
     title: SharedString,
@@ -2249,6 +2258,7 @@ fn calendar_toggle(
                 .child(title),
         )
 }
+
 fn field(label: &'static str, input: impl IntoElement) -> Div {
     div()
         .mb_3()
@@ -2622,6 +2632,7 @@ mod tests {
             })
             .unwrap();
     }
+
     #[gpui::test]
     fn move_and_resize_preserve_valid_ranges(context: &mut TestAppContext) {
         context.update(gpui_kit::init);
@@ -2664,6 +2675,7 @@ fn week_start(date: NaiveDate, sunday_first: bool) -> NaiveDate {
     };
     date - Duration::days(i64::from(offset))
 }
+
 impl CalendarApp {
     fn profile_menu(&self, context: &mut Context<Self>) -> impl IntoElement {
         div()

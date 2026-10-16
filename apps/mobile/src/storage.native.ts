@@ -1,13 +1,13 @@
 import { openDatabaseAsync } from "expo-sqlite";
 import type { SnapshotStorage } from "@calendar/api/react";
-const database = openDatabaseAsync("calendar-preview.db").then(
-  async (database) => {
-    await database.execAsync(
-      "CREATE TABLE IF NOT EXISTS snapshots (cache_key TEXT PRIMARY KEY, payload TEXT NOT NULL)",
-    );
-    return database;
-  },
-);
+
+const database = openDatabaseAsync("calendar-preview.db").then(async (database) => {
+  await database.execAsync(
+    "CREATE TABLE IF NOT EXISTS snapshots (cache_key TEXT PRIMARY KEY, payload TEXT NOT NULL)",
+  );
+
+  return database;
+});
 export const snapshotStorage: SnapshotStorage = {
   async read(key) {
     const row = await (
@@ -16,6 +16,7 @@ export const snapshotStorage: SnapshotStorage = {
       "SELECT payload FROM snapshots WHERE cache_key = ?",
       key,
     );
+
     return row ? JSON.parse(row.payload) : undefined;
   },
   async write(key, value) {

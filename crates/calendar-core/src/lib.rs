@@ -118,12 +118,14 @@ mod tests {
         assert_eq!(cells[0].weekday(), chrono::Weekday::Mon);
         assert!(cells.contains(&NaiveDate::from_ymd_opt(2028, 2, 29).unwrap()));
     }
+
     #[test]
     fn rejects_dst_gap_and_ambiguous_hour() {
         let zone = chrono_tz::America::New_York;
         assert!(resolve_local(NaiveDate::from_ymd_opt(2026, 3, 8).unwrap(), 150, zone).is_err());
         assert!(resolve_local(NaiveDate::from_ymd_opt(2026, 11, 1).unwrap(), 90, zone).is_err());
     }
+
     #[test]
     fn midnight_rolls_to_next_day() {
         let date = NaiveDate::from_ymd_opt(2026, 10, 14).unwrap();

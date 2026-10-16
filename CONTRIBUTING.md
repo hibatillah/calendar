@@ -30,7 +30,14 @@ Log meaningful state changes with `action`, object/operation IDs and outcome. Ne
 
 References: [Axum's testing example](https://github.com/tokio-rs/axum/blob/main/examples/testing/src/main.rs), [GPUI test context](https://docs.rs/gpui/latest/gpui/attr.test.html).
 
-
 For telemetry, use static screen/control/error categories. Instrument async operations with `#[tracing::instrument(skip_all)]` so event bodies and tokens never become span attributes. Remote logs use an allowlist; do not expand it to free-form user data. Keep transport logs out of remote export to prevent feedback loops. See [telemetry](docs/telemetry.md) for configuration and verification.
 
 Document GraphQL fields and arguments alongside their Rust definitions. Keep examples in `docs/graphql.md` aligned with the exported SDL. Tests should cover authenticated introspection, query/mutation behavior and error extension codes.
+
+## Readability and formatting
+
+Use one statement per line. Separate imports from declarations, and separate functions, hooks, validation, side effects, and returns with a blank line. Keep related declarations together. Use explicit identifiers and extract coherent responsibilities rather than introducing one-line wrapper modules.
+
+Run `bun run format` for maintained TypeScript, JavaScript, CSS, HTML, JSON, YAML and Markdown; use `bun run format:check` in CI. Run `./scripts/cargo.ps1 fmt --all` for Rust. Keep PowerShell statements in readable logical groups and validate scripts with the PowerShell parser. Generated operation types, route trees, GraphQL SDL, native projects, assets and build outputs are excluded from manual formatting. Prettier preserves logical blank lines but does not decide where they belong; review those boundaries explicitly.
+
+Keep formatting commits separate from behavior-preserving module extractions. Refactoring must preserve OAuth scopes, storage keys, event IDs, optimistic updates, notification scheduling and platform boundaries. Run the affected browser/native checks after moving code.

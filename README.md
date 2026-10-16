@@ -74,9 +74,6 @@ GPUI tests run against a test window, without operating your desktop. Native app
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and [architecture](docs/architecture.md) for ownership and sync design.
 
-
-
-
 ## GraphQL documentation
 
 Open [GraphiQL](http://127.0.0.1:47821/docs), paste `.local/session-token` into the local session token field, then click Connect. Open the Docs panel to browse queries, mutations, types, field descriptions and arguments. The bundled UI runs locally and keeps credentials only in memory. The PostHog project token is unrelated to API authentication.

@@ -16,6 +16,7 @@ pub struct Account {
     pub message: String,
     pub calendars: Vec<GoogleCalendar>,
 }
+
 #[derive(Clone, SimpleObject)]
 pub struct Connection {
     pub configured: bool,
@@ -27,10 +28,12 @@ pub struct Connection {
     pub calendars: Vec<GoogleCalendar>,
     pub accounts: Vec<Account>,
 }
+
 #[derive(Clone)]
 pub struct GoogleAccounts {
     sessions: Arc<Mutex<Vec<GoogleAuth>>>,
 }
+
 impl Default for GoogleAccounts {
     fn default() -> Self {
         let slots: Vec<String> = std::fs::read_to_string(".local/google-accounts.json")
@@ -52,6 +55,7 @@ impl Default for GoogleAccounts {
         }
     }
 }
+
 fn persist(sessions: &[GoogleAuth]) -> Result<(), String> {
     std::fs::create_dir_all(".local").map_err(|_| "Cannot save account list.")?;
     let slots: Vec<_> = sessions.iter().map(|session| &session.slot).collect();
@@ -61,10 +65,12 @@ fn persist(sessions: &[GoogleAuth]) -> Result<(), String> {
     )
     .map_err(|_| "Cannot save account list.".into())
 }
+
 fn prefix_event(event: &mut CalendarEvent, slot: &str) {
     event.calendar_id = format!("{slot}|{}", event.calendar_id);
     event.event_id = format!("{slot}|{}", event.event_id);
 }
+
 impl GoogleAccounts {
     pub async fn status(&self) -> Connection {
         let sessions = self.sessions.lock().await.clone();
@@ -138,6 +144,7 @@ impl GoogleAccounts {
         }
         connection
     }
+
     pub async fn begin(&self, account_id: Option<String>) -> Result<String, String> {
         let mut sessions = self.sessions.lock().await;
         for session in sessions.iter() {
@@ -160,6 +167,7 @@ impl GoogleAccounts {
         persist(&sessions)?;
         Ok(url)
     }
+
     pub async fn disconnect(&self, account_id: Option<String>) -> Result<bool, String> {
         let mut sessions = self.sessions.lock().await;
         if let Some(identifier) = &account_id
@@ -187,6 +195,7 @@ impl GoogleAccounts {
         persist(&sessions)?;
         Ok(true)
     }
+
     pub async fn events(
         &self,
         start: chrono::NaiveDate,
@@ -218,6 +227,7 @@ impl GoogleAccounts {
         }
         Ok(events)
     }
+
     pub async fn save(&self, mut command: EventCommand) -> Result<CalendarEvent, String> {
         let (slot, calendar) = command
             .event

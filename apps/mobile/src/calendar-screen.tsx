@@ -77,9 +77,7 @@ export function CalendarScreen() {
     operationId: string;
   } | null>(null);
   const [message, setMessage] = useState("");
-  const [hiddenCalendars, setHiddenCalendars] = useState<Set<string>>(
-    new Set(),
-  );
+  const [hiddenCalendars, setHiddenCalendars] = useState<Set<string>>(new Set());
   const [activity, setActivity] = useState<string[]>([]);
   const [activityOpen, setActivityOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -107,6 +105,7 @@ export function CalendarScreen() {
     snapshotStorage,
     connectionLoaded && !!connection && reminderMinutes !== null,
   );
+
   useEffect(() => {
     readPreferences()
       .then((preferences) => {
@@ -116,6 +115,7 @@ export function CalendarScreen() {
       })
       .catch(() => setMessage("Could not restore preferences."))
       .finally(() => setPreferencesLoaded(true));
+
     return watchReminderOpen(setSelectedDate);
   }, []);
   useEffect(() => {
@@ -127,12 +127,14 @@ export function CalendarScreen() {
       }).catch(() => setMessage("Could not save preferences."));
   }, [preferencesLoaded, weekStart, hiddenCalendars, reminderMinutes]);
   useEffect(() => {
-    if (!preferencesLoaded || !connectionLoaded || calendar.save.isPending)
-      return;
+    if (!preferencesLoaded || !connectionLoaded || calendar.save.isPending) return;
+
     if (connection && reminderMinutes !== null && !upcoming.data) return;
+
     const visible = (upcoming.data?.events ?? []).filter(
       (event) => !hiddenCalendars.has(event.calendarId),
     );
+
     void syncReminders(visible, connection ? reminderMinutes : null).catch(() =>
       setMessage("Could not update reminders. Check notification settings."),
     );
@@ -145,30 +147,28 @@ export function CalendarScreen() {
     upcoming.data,
     calendar.save.isPending,
   ]);
+
   const refreshCalendar = calendar.refetch;
   const refreshUpcoming = upcoming.refetch;
   const savingEvent = calendar.save.isPending;
+
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active" && connection && !savingEvent) {
         void refreshCalendar();
+
         if (reminderMinutes !== null) void refreshUpcoming();
       }
     });
+
     return () => subscription.remove();
-  }, [
-    connection,
-    reminderMinutes,
-    refreshCalendar,
-    savingEvent,
-    refreshUpcoming,
-  ]);
+  }, [connection, reminderMinutes, refreshCalendar, savingEvent, refreshUpcoming]);
+
   const accounts = calendar.data?.googleConnection.accounts ?? [];
   const calendars = accounts.flatMap((account) =>
     account.calendars.map((item) => ({
       ...item,
-      writable:
-        account.writeAccess && ["owner", "writer"].includes(item.accessRole),
+      writable: account.writeAccess && ["owner", "writer"].includes(item.accessRole),
     })),
   );
   const events = (calendar.data?.events ?? []).filter(
@@ -178,11 +178,9 @@ export function CalendarScreen() {
   const touchStart = useRef(0);
   const log = (action: string) =>
     setActivity((previous) =>
-      [`${new Date().toLocaleTimeString()} · ${action}`, ...previous].slice(
-        0,
-        60,
-      ),
+      [`${new Date().toLocaleTimeString()} · ${action}`, ...previous].slice(0, 60),
     );
+
   useEffect(() => {
     loadConnection()
       .then((value) => {
@@ -192,27 +190,32 @@ export function CalendarScreen() {
           setToken(value.token);
         }
       })
-      .catch(() =>
-        setMessage("Could not restore the connection. Open Settings."),
-      )
+      .catch(() => setMessage("Could not restore the connection. Open Settings."))
       .finally(() => setConnectionLoaded(true));
   }, []);
+
   const newEvent = () => {
     if (calendar.isError) {
       setMessage("Offline · viewing only. Reconnect before editing.");
+
       return;
     }
+
     const selectedCalendar =
       calendars.find((item) => item.writable && item.primary) ??
       calendars.find((item) => item.writable);
+
     if (!selectedCalendar) {
       setMessage(
         "Connect the backend and approve Google calendar editing in the desktop app first.",
       );
       setSettingsOpen(true);
+
       return;
     }
+
     const start = localInstant(selectedDate, "09:00");
+
     setCommand(null);
     setDraftDirty(false);
     setDraft({
@@ -225,27 +228,28 @@ export function CalendarScreen() {
       allDay: false,
       description: "",
       location: "",
-      color:
-        parseInt(selectedCalendar.backgroundColor.replace("#", ""), 16) ||
-        5614047,
+      color: parseInt(selectedCalendar.backgroundColor.replace("#", ""), 16) || 5614047,
       revision: 0,
       readOnly: false,
     });
   };
   const save = async (event: EventInput) => {
     if (calendar.save.isPending) return;
+
     setDraft(event);
+
     if (calendar.isError || !connection) {
       setMessage("Reconnect before saving. Your draft is retained.");
+
       return;
     }
-    if (
-      !event.title.trim() ||
-      Date.parse(event.end) <= Date.parse(event.start)
-    ) {
+
+    if (!event.title.trim() || Date.parse(event.end) <= Date.parse(event.start)) {
       setMessage("Add a title and choose an end after the start.");
+
       return;
     }
+
     const nextCommand =
       command && JSON.stringify(command.event) === JSON.stringify(event)
         ? command
@@ -258,15 +262,19 @@ export function CalendarScreen() {
               ? event.revision
               : -1,
           };
+
     setCommand(nextCommand);
     log("Saving event");
     setMessage("Saving…");
+
     try {
       await calendar.save.mutateAsync(nextCommand);
+
       if (Platform.OS !== "web")
-        void Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        ).catch(() => {});
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+          () => {},
+        );
+
       setDraft(null);
       setCommand(null);
       setMessage("Saved");
@@ -279,7 +287,9 @@ export function CalendarScreen() {
   const updateConnection = async () => {
     try {
       const settings = { endpoint: endpoint.trim(), token: token.trim() };
+
       if (!settings.token) throw new Error("Enter the local session token.");
+
       await saveConnection(settings);
       await queryClient.cancelQueries();
       queryClient.clear();
@@ -294,26 +304,26 @@ export function CalendarScreen() {
   };
   const closeEditor = () => {
     if (calendar.save.isPending) return;
+
     if (!draftDirty) {
       setDraft(null);
+
       return;
     }
+
     if (Platform.OS === "web") {
       if (window.confirm("Discard your unsaved changes?")) setDraft(null);
     } else
-      Alert.alert(
-        "Discard changes?",
-        "Your unsaved event changes will be lost.",
-        [
-          { text: "Keep editing", style: "cancel" },
-          {
-            text: "Discard",
-            style: "destructive",
-            onPress: () => setDraft(null),
-          },
-        ],
-      );
+      Alert.alert("Discard changes?", "Your unsaved event changes will be lost.", [
+        { text: "Keep editing", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => setDraft(null),
+        },
+      ]);
   };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="light" />
@@ -350,10 +360,9 @@ export function CalendarScreen() {
         }}
         onTouchEnd={(event) => {
           const distance = event.nativeEvent.pageX - touchStart.current;
+
           if (Math.abs(distance) > 70)
-            setSelectedDate((previous) =>
-              addMonths(previous, distance < 0 ? 1 : -1),
-            );
+            setSelectedDate((previous) => addMonths(previous, distance < 0 ? 1 : -1));
         }}
       >
         <View className="flex-row mb-2">
@@ -381,6 +390,7 @@ export function CalendarScreen() {
         <View className="flex-row flex-wrap">
           {dates.map((date) => {
             const dailyEvents = eventsOnDay(events, date);
+
             return (
               <Pressable
                 accessibilityRole="button"
@@ -389,6 +399,7 @@ export function CalendarScreen() {
                 key={date}
                 onPress={() => {
                   setSelectedDate(date);
+
                   if (Platform.OS !== "web")
                     void Haptics.selectionAsync().catch(() => {});
                 }}
@@ -399,8 +410,7 @@ export function CalendarScreen() {
                   borderWidth: 1,
                   borderRadius: 8,
                   borderColor: date === selectedDate ? "#777" : "transparent",
-                  opacity:
-                    date.slice(0, 7) === selectedDate.slice(0, 7) ? 1 : 0.35,
+                  opacity: date.slice(0, 7) === selectedDate.slice(0, 7) ? 1 : 0.35,
                 }}
               >
                 <Text
@@ -455,15 +465,10 @@ export function CalendarScreen() {
           {dayLabel(selectedDate)} · {agenda.length}{" "}
           {agenda.length === 1 ? "event" : "events"}
         </Label>
-        {calendar.isFetching && (
-          <ActivityIndicator size="small" color={colors.muted} />
-        )}
+        {calendar.isFetching && <ActivityIndicator size="small" color={colors.muted} />}
       </View>
       {calendar.isError && (
-        <Pressable
-          onPress={() => void calendar.refetch()}
-          className="px-6 pb-3"
-        >
+        <Pressable onPress={() => void calendar.refetch()} className="px-6 pb-3">
           <Text style={[textStyle, { fontSize: 12, color: "#d6b079" }]}>
             {calendar.data ? "Offline snapshot. " : ""}
             {calendar.error.message} Tap to retry.
@@ -497,6 +502,7 @@ export function CalendarScreen() {
             accessibilityLabel={`Open ${item.title}`}
             onPress={() => {
               const event = item;
+
               setDraft(event);
               setDraftDirty(false);
               setCommand(null);
@@ -558,9 +564,8 @@ export function CalendarScreen() {
           </View>
           <Label>Reminders</Label>
           <Label muted>
-            Private local alerts for the next 50 timed events. Open Calendar
-            regularly to sync changes; delivery follows your device notification
-            settings.
+            Private local alerts for the next 50 timed events. Open Calendar regularly
+            to sync changes; delivery follows your device notification settings.
           </Label>
           <View className="flex-row flex-wrap gap-2">
             {[null, 0, 5, 10, 15, 30].map((minutes) => (
@@ -573,8 +578,10 @@ export function CalendarScreen() {
                       setMessage(
                         "Allow notifications in system Settings. Reminders require the native app.",
                       );
+
                       return;
                     }
+
                     setReminderMinutes(minutes);
                   } catch {
                     setMessage("Could not enable reminders.");
@@ -583,8 +590,7 @@ export function CalendarScreen() {
                 style={{
                   padding: 12,
                   borderRadius: 8,
-                  backgroundColor:
-                    reminderMinutes === minutes ? "#444" : "#292929",
+                  backgroundColor: reminderMinutes === minutes ? "#444" : "#292929",
                 }}
               >
                 <Label>
@@ -607,9 +613,8 @@ export function CalendarScreen() {
           </Pressable>
           <Label>Local backend connection</Label>
           <Label muted>
-            For Android USB/emulator, run adb reverse tcp:47821 tcp:47821 on
-            your computer. Google sign-in remains in the desktop app for this
-            local preview.
+            For Android USB/emulator, run adb reverse tcp:47821 tcp:47821 on your
+            computer. Google sign-in remains in the desktop app for this local preview.
           </Label>
           <TextInput
             accessibilityLabel="Backend URL"
@@ -647,8 +652,10 @@ export function CalendarScreen() {
                   onPress={() =>
                     setHiddenCalendars((previous) => {
                       const next = new Set(previous);
+
                       if (next.has(item.id)) next.delete(item.id);
                       else next.add(item.id);
+
                       return next;
                     })
                   }
@@ -695,8 +702,8 @@ export function CalendarScreen() {
             <Label>Activity</Label>
           </Pressable>
           <Label muted>
-            Credentials use SecureStore on Android/iOS. Calendar snapshots stay
-            on this device. Public hosted sign-in is not enabled yet.
+            Credentials use SecureStore on Android/iOS. Calendar snapshots stay on this
+            device. Public hosted sign-in is not enabled yet.
           </Label>
           {!!message && <Label>{message}</Label>}
         </ScrollView>
@@ -717,9 +724,7 @@ export function CalendarScreen() {
             calendars={calendars.filter((item) => item.writable)}
           />
         )}
-        <Text style={[textStyle, { padding: 20, color: "#d6b079" }]}>
-          {message}
-        </Text>
+        <Text style={[textStyle, { padding: 20, color: "#d6b079" }]}>{message}</Text>
       </Sheet>
       <Sheet
         title="Activity"

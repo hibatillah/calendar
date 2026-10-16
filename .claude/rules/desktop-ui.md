@@ -14,4 +14,3 @@ paths:
 - Use a non-modal event popover that leaves the calendar usable. Use a wide settings dialog with left navigation and right content. Both must isolate scrolling and pointer events from the calendar underneath.
 - Start the main window at its configured minimum size, centered and windowed. Verify layout at that size as well as after resizing.
 - Preserve Windows tray behavior and macOS titlebar/menu-bar boundaries. Report platform verification separately.
-

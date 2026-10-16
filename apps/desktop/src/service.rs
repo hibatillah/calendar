@@ -19,6 +19,7 @@ pub struct GoogleConnection {
     #[serde(default)]
     pub accounts: Vec<GoogleAccount>,
 }
+
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GoogleAccount {
@@ -32,6 +33,7 @@ pub struct GoogleAccount {
     pub message: String,
     pub calendars: Vec<GoogleCalendar>,
 }
+
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GoogleCalendar {
@@ -41,6 +43,7 @@ pub struct GoogleCalendar {
     pub background_color: String,
     pub access_role: String,
 }
+
 impl GoogleCalendar {
     pub fn color(&self) -> u32 {
         u32::from_str_radix(self.background_color.trim_start_matches('#'), 16).unwrap_or(0x6ba5d7)
@@ -55,6 +58,7 @@ pub enum Request {
     ViewMonth(chrono::NaiveDate),
     Save(Box<EventCommand>),
 }
+
 pub enum Update {
     GoogleConnection(GoogleConnection),
     GoogleError(String),
@@ -66,6 +70,7 @@ pub enum Update {
     Failed(String),
     Status(bool),
 }
+
 pub struct Connection {
     pub sender: Sender<Request>,
     pub receiver: Receiver<Update>,
@@ -212,6 +217,7 @@ pub fn start() -> Connection {
 fn range_key(account_key: &str, month: chrono::NaiveDate) -> String {
     format!("google-events:{account_key}:{month}")
 }
+
 async fn load_cached_range(
     cache: &sqlx::SqlitePool,
     account_key: &str,

@@ -17,4 +17,3 @@ paths:
 - Keep GraphQL field/argument documentation and exported schema aligned with implementation. Preserve authenticated introspection and actionable error responses.
 - Follow `CONTRIBUTING.md` and `docs/telemetry.md` for diagnostic fields and remote allowlists. Never expose credentials, consent URLs, event bodies or personal account data in remote telemetry. Record meaningful actions and outcomes without dumping requests.
 - Tests use mocks or isolated fixtures. Do not mutate the user's Google calendar or running cache/database to prove a test passes.
-

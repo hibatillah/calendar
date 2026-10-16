@@ -25,8 +25,16 @@ The mode is `LOCAL_PREVIEW`. Google synchronization is not implemented yet.
 ## Save an event
 
 ```graphql
-mutation SaveEvent($operationId: String!, $expectedRevision: Int!, $event: EventInput!) {
-  saveEvent(operationId: $operationId, expectedRevision: $expectedRevision, event: $event) {
+mutation SaveEvent(
+  $operationId: String!
+  $expectedRevision: Int!
+  $event: EventInput!
+) {
+  saveEvent(
+    operationId: $operationId
+    expectedRevision: $expectedRevision
+    event: $event
+  ) {
     eventId
     title
     revision
@@ -63,12 +71,12 @@ Use `expectedRevision: -1` to create. For an update, use the last returned revis
 
 GraphQL execution errors are returned in the `errors` array, normally with HTTP 200. Check `errors` before using `data`. Application error codes appear in `errors[].extensions.code`:
 
-| Code | Meaning |
-| --- | --- |
-| `INVALID_EVENT` | Invalid event values or timestamp |
-| `CONFLICT` | Stale revision, missing event, or operation ID reused with different data |
-| `READ_ONLY` | Stored event cannot be edited |
-| `INTERNAL_ERROR` | Local persistence failed |
+| Code             | Meaning                                                                   |
+| ---------------- | ------------------------------------------------------------------------- |
+| `INVALID_EVENT`  | Invalid event values or timestamp                                         |
+| `CONFLICT`       | Stale revision, missing event, or operation ID reused with different data |
+| `READ_ONLY`      | Stored event cannot be edited                                             |
+| `INTERNAL_ERROR` | Local persistence failed                                                  |
 
 GraphQL syntax/schema validation errors also appear in `errors`, but may not have an application code. Missing/wrong authentication or an unapproved browser origin returns HTTP 401. Requests use the `x-calendar-token` header. The only allowed browser origin is `http://127.0.0.1:47821`; native callers omit Origin. GraphiQL assets are local, and the page never embeds or persists your session token.
 
@@ -80,7 +88,10 @@ query MutationDocumentation {
     fields {
       name
       description
-      args { name description }
+      args {
+        name
+        description
+      }
     }
   }
 }

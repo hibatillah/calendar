@@ -2,9 +2,7 @@ import * as React from "react";
 import { mergeClasses } from "@/lib/utils";
 import { Popover as PopoverPrimitive } from "radix-ui";
 
-function Popover({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
 
@@ -62,10 +60,7 @@ function PopoverTitle({ className, ...props }: React.ComponentProps<"h2">) {
   );
 }
 
-function PopoverDescription({
-  className,
-  ...props
-}: React.ComponentProps<"p">) {
+function PopoverDescription({ className, ...props }: React.ComponentProps<"p">) {
   return (
     <p
       data-slot="popover-description"

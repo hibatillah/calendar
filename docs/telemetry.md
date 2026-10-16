@@ -18,12 +18,12 @@ Both apps parse `.env` without mutating process environment. Existing environmen
 
 The app and backend still run locally. Enabling this option sends the following telemetry to PostHog Cloud:
 
-| Signal | Implementation |
-| --- | --- |
-| Analytics | `posthog-rs`: screen views, named button clicks, save requests/completions, move/resize gestures |
-| Errors | SDK exceptions for handled worker/GraphQL failures and a sanitized panic hook; stack captured at the reporting site |
-| Logs | Rust tracing actions, sanitized and exported through OpenTelemetry to `/i/v1/logs` |
-| Traces | OpenTelemetry spans for desktop requests, Axum GraphQL execution and repository reads/writes, propagated through `traceparent`, exported to `/i/v1/traces` |
+| Signal    | Implementation                                                                                                                                             |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Analytics | `posthog-rs`: screen views, named button clicks, save requests/completions, move/resize gestures                                                           |
+| Errors    | SDK exceptions for handled worker/GraphQL failures and a sanitized panic hook; stack captured at the reporting site                                        |
+| Logs      | Rust tracing actions, sanitized and exported through OpenTelemetry to `/i/v1/logs`                                                                         |
+| Traces    | OpenTelemetry spans for desktop requests, Axum GraphQL execution and repository reads/writes, propagated through `traceparent`, exported to `/i/v1/traces` |
 
 SDK events and OTLP requests use the same project token. Remote queues are bounded and delivery is best effort. Graceful shutdown allows up to three seconds of draining; forced termination can lose queued telemetry. Trace sampling currently captures all instrumented operations in this local preview. Introduce sampling and separate development/production configuration before a public release.
 

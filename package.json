@@ -13,9 +13,10 @@
     "build": "turbo run build",
     "codegen": "graphql-codegen --config codegen.ts",
     "test:web": "playwright test",
-    "format": "prettier --write apps/web/src packages codegen.ts playwright.config.ts vitest.config.ts apps/mobile/App.tsx apps/mobile/app apps/mobile/src",
+    "format": "prettier --write .",
     "dev:mobile": "bun run --cwd apps/mobile start",
-    "test:mobile": "playwright test --config playwright.mobile.config.ts"
+    "test:mobile": "playwright test --config playwright.mobile.config.ts",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@graphql-codegen/cli": "7.4.6",

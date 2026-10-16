@@ -12,10 +12,5 @@
     "nativewind-env.d.ts",
     ".expo/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "android",
-    "ios"
-  ]
+  "exclude": ["node_modules", "dist", "android", "ios"]
 }

@@ -9,4 +9,3 @@
 - Keep calendar domain and layout crates independent of GPUI, HTTP and storage. Keep native OS code behind target gates; use the background service for network/database work.
 - When `.codegraph/` exists, use CodeGraph before text searches to locate or understand code. Without an index, use targeted searches; creating an index is the user's decision.
 - For GitHub work, prefer available GitHub MCP tools; use `gh` for capabilities they lack. Honor the user's requested scope.
-

@@ -7,4 +7,3 @@
 - Report macOS readiness as architectural preparation until the app has been built and exercised on a Mac.
 - Before calling a feature complete, trace the user's flow through its required permission, fetch/write and visible outcome. If consent or another external prerequisite remains, identify the exact blocked step and the action needed; distinguish implemented from verified.
 - Finish with what changed, checks actually run and material limitations. Keep existing docs aligned; avoid adding a new report for each small change.
-

@@ -16,4 +16,3 @@ paths:
 - Preserve exclusive end dates for all-day events and correct local-day placement across midnight and time-zone boundaries. Reject invalid or ambiguous local times explicitly.
 - Treat recurring occurrences and recurring series as distinct edit scopes. State which scope is supported before a write; preserve provider instance identity.
 - Permission failures and offline state need actionable feedback. Creating an event must not silently do nothing or pretend to save locally when Google has not accepted it.
-

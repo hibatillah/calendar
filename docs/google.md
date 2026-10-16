@@ -1,6 +1,6 @@
 # Google account connection
 
-Randevu connects multiple Google accounts and groups calendars by account. Writable calendars support creation, editing, moving and resizing events. Reader calendars and special Google event types remain read-only. Sample data is removed on startup.
+Calendar connects multiple Google accounts and groups calendars by account. Writable calendars support creation, editing, moving and resizing events. Reader calendars and special Google event types remain read-only. Sample data is removed on startup.
 
 ## Configure once
 
@@ -21,9 +21,11 @@ The callback binds a temporary random port on `127.0.0.1`; Desktop clients suppo
 
 ## Credentials and permissions
 
+The Calendar rename migrates existing Google credentials into `calendar.google.local` on first access. Local caches, account-slot identifiers and preferences keep their existing paths. Old provider operation markers remain readable for retry reconciliation; new writes use `calendarOperation`. If Google still displays an older consent-screen name, update the OAuth project's branding in Google Cloud Console separately.
+
 The requested scopes are `calendar.calendarlist.readonly` and `calendar.events` under `https://www.googleapis.com/auth/`, plus `openid email profile` for the name and avatar. Existing accounts must choose **Approve calendar access** in Settings and complete browser consent. A timed-out or denied consent preserves the existing connection.
 
-Refresh tokens go into Windows Credential Manager under service `randevu.google.local`, with separate entries per account (the legacy entry is `desktop-account`); macOS uses Keychain. Access tokens live in memory. Tokens are excluded from SQLite, `.env`, logs and analytics. `.local/google-accounts.json` stores only credential-slot identifiers; profile images are cached in `.local/avatars`.
+Refresh tokens go into Windows Credential Manager under service `calendar.google.local`, with separate entries per account (the legacy entry is `desktop-account`); macOS uses Keychain. Access tokens live in memory. Tokens are excluded from SQLite, `.env`, logs and analytics. `.local/google-accounts.json` stores only credential-slot identifiers; profile images are cached in `.local/avatars`.
 
 Google testing-mode grants may expire after seven days; reconnect if the app reports that authorization expired or was revoked. Public distribution requires Google consent-screen/verification work appropriate to the scopes requested.
 

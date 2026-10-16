@@ -39,7 +39,7 @@ No native GPUI session replay or automatic browser click/page capture is impleme
 
 1. Configure a real project token, enable uploads and restart.
 2. Open Activity, navigate a week, open an event and save a sample change. Inspect `screen_viewed`, `control_clicked` and `event_save_completed` in PostHog events.
-3. Check Logs for service `randevu-desktop` / `randevu-backend`; check Tracing for `backend_request` → `graphql_request` → `database.events` / `database.save`. Distributed tracing is currently a PostHog beta.
+3. Check Logs for service `calendar-desktop` / `calendar-backend`; check Tracing for `backend_request` → `graphql_request` → `database.events` / `database.save`. Distributed tracing is currently a PostHog beta.
 4. A genuine worker/GraphQL error should appear under Error Tracking. Tests cover error event generation without sending artificial errors to a live project.
 5. Absence of a token means local-only behavior; “enabled” is configuration status, not proof of successful ingestion. Transport failures remain local diagnostics, never recursively exported.
 

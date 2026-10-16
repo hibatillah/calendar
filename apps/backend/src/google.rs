@@ -8,7 +8,9 @@ use tokio::sync::Mutex;
 
 const EVENT_SCOPE: &str = "https://www.googleapis.com/auth/calendar.events";
 const SCOPE: &str = "openid email profile https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/calendar.events";
-const CREDENTIAL_SERVICE: &str = "randevu.google.local";
+const CREDENTIAL_SERVICE: &str = "calendar.google.local";
+// Read only during migration from the previous application name.
+const LEGACY_CREDENTIAL_SERVICE: &str = "randevu.google.local";
 
 #[derive(Clone, Deserialize, Serialize, SimpleObject)]
 #[serde(rename_all = "camelCase")]
@@ -150,6 +152,44 @@ fn credential_entry(slot: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(CREDENTIAL_SERVICE, slot)
         .map_err(|_| "OS credential storage unavailable.".into())
 }
+
+fn restore_credentials(slot: &str) -> Result<Option<Credentials>, String> {
+    let current = credential_entry(slot)?;
+    let value = match current.get_password() {
+        Ok(value) => value,
+        Err(keyring::Error::NoEntry) => {
+            let legacy = keyring::Entry::new(LEGACY_CREDENTIAL_SERVICE, slot)
+                .map_err(|_| "OS credential storage unavailable.")?;
+            match legacy.get_password() {
+                Ok(value) => {
+                    let _: Credentials = serde_json::from_str(&value)
+                        .map_err(|_| "Stored Google credentials are invalid.")?;
+                    current
+                        .set_password(&value)
+                        .map_err(|_| "Cannot migrate Google credentials to Calendar.")?;
+                    legacy
+                        .delete_credential()
+                        .map_err(|_| "Cannot remove the migrated credential entry.")?;
+                    tracing::info!(action = "google_credentials_migrated");
+                    value
+                }
+                Err(keyring::Error::NoEntry) => return Ok(None),
+                Err(_) => return Err("Cannot read Google credentials from the OS vault.".into()),
+            }
+        }
+        Err(_) => return Err("Cannot read Google credentials from the OS vault.".into()),
+    };
+    serde_json::from_str(&value)
+        .map(Some)
+        .map_err(|_| "Stored Google credentials are invalid. Disconnect and reconnect.".into())
+}
+
+fn provider_operation(value: &serde_json::Value) -> Option<&str> {
+    let private = &value["extendedProperties"]["private"];
+    private["calendarOperation"]
+        .as_str()
+        .or_else(|| private["randevuOperation"].as_str())
+}
 async fn store_credentials(slot: String, credentials: Option<Credentials>) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         let entry = credential_entry(&slot)?;
@@ -164,10 +204,20 @@ async fn store_credentials(slot: String, credentials: Option<Credentials>) -> Re
                     )
                     .map_err(|_| "Unable to save credentials in the OS vault.".into())
             }
-            None => match entry.delete_credential() {
-                Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-                Err(_) => Err("Unable to remove credentials from the OS vault.".into()),
-            },
+            None => {
+                // Remove both namespaces so an interrupted migration cannot restore a signed-out account.
+                for service in [CREDENTIAL_SERVICE, LEGACY_CREDENTIAL_SERVICE] {
+                    let entry = keyring::Entry::new(service, &slot)
+                        .map_err(|_| "OS credential storage unavailable.")?;
+                    match entry.delete_credential() {
+                        Ok(()) | Err(keyring::Error::NoEntry) => (),
+                        Err(_) => {
+                            return Err("Unable to remove credentials from the OS vault.".into());
+                        }
+                    }
+                }
+                Ok(())
+            }
         }
     })
     .await
@@ -198,18 +248,7 @@ impl GoogleAuth {
             return;
         }
         let slot = self.slot.clone();
-        let restored =
-            tokio::task::spawn_blocking(move || match credential_entry(&slot)?.get_password() {
-                Ok(value) => serde_json::from_str::<Credentials>(&value)
-                    .map(Some)
-                    .map_err(|_| {
-                        "Stored Google credentials are invalid. Disconnect and reconnect."
-                            .to_string()
-                    }),
-                Err(keyring::Error::NoEntry) => Ok(None),
-                Err(_) => Err("Cannot read Google credentials from the OS vault.".into()),
-            })
-            .await;
+        let restored = tokio::task::spawn_blocking(move || restore_credentials(&slot)).await;
         match restored {
             Ok(Ok(Some(credentials)))
                 if Some(&credentials.client_id)
@@ -478,7 +517,7 @@ impl GoogleAuth {
                 async move {
                     let result = if parameters.get("state") == Some(&expected_state) { auth.complete(parameters).await } else { Err(()) };
                     if result.is_ok() { let _ = done.send(true); }
-                    ([("cache-control", "no-store"), ("referrer-policy", "no-referrer"), ("content-security-policy", "default-src 'none'")], Html(if result == Ok(true) { "<h1>Google connected</h1><p>Return to Randevu. You can close this tab.</p>" } else { "<h1>Sign-in did not complete</h1><p>Return to Randevu for details. You can close this tab.</p>" }))
+                    ([("cache-control", "no-store"), ("referrer-policy", "no-referrer"), ("content-security-policy", "default-src 'none'")], Html(if result == Ok(true) { "<h1>Google connected</h1><p>Return to Calendar. You can close this tab.</p>" } else { "<h1>Sign-in did not complete</h1><p>Return to Calendar for details. You can close this tab.</p>" }))
                 }
             }));
             let shutdown = async move {
@@ -755,7 +794,7 @@ impl GoogleAuth {
         let request = if creating {
             payload["id"] = provider_id.clone().into();
             payload["extendedProperties"] =
-                serde_json::json!({"private":{"randevuOperation":command.operation_id}});
+                serde_json::json!({"private":{"calendarOperation":command.operation_id}});
             self.client.post(collection)
         } else {
             let current = self
@@ -770,8 +809,7 @@ impl GoogleAuth {
             }
             let current: serde_json::Value =
                 current.json().await.map_err(|_| "Invalid Google event.")?;
-            if current["extendedProperties"]["private"]["randevuOperation"] == command.operation_id
-            {
+            if provider_operation(&current) == Some(command.operation_id.as_str()) {
                 return map_google_event(&current, &calendar)?.ok_or("Event was removed.".into());
             }
             let mapped = map_google_event(&current, &calendar)?.ok_or("Event was removed.")?;
@@ -786,7 +824,7 @@ impl GoogleAuth {
                 .cloned()
                 .unwrap_or_default();
             private.insert(
-                "randevuOperation".into(),
+                "calendarOperation".into(),
                 command.operation_id.clone().into(),
             );
             payload["extendedProperties"] = serde_json::json!({"private":private});
@@ -818,7 +856,7 @@ impl GoogleAuth {
                 .json()
                 .await
                 .map_err(|_| "Invalid Google event response.")?;
-            if value["extendedProperties"]["private"]["randevuOperation"] != command.operation_id {
+            if provider_operation(&value) != Some(command.operation_id.as_str()) {
                 return Err("Event identifier already exists.".into());
             }
             value
@@ -872,7 +910,7 @@ impl GoogleAuth {
                 .send()
                 .await;
             if !revoked.is_ok_and(|response| response.status().is_success()) {
-                state.message = Some("Disconnected locally. Remove Randevu access in your Google account to revoke the remote grant.".into());
+                state.message = Some("Disconnected locally. Remove Calendar access in your Google account to revoke the remote grant.".into());
             }
         }
         tracing::info!(action = "google_disconnected");
@@ -1178,6 +1216,23 @@ mod tests {
                 .contains("changed in Google")
         );
         server.abort();
+    }
+
+    #[test]
+    fn provider_operation_reads_legacy_markers_but_prefers_calendar() {
+        assert_eq!(
+            provider_operation(
+                &serde_json::json!({"extendedProperties":{"private":{"randevuOperation":"old"}}})
+            ),
+            Some("old")
+        );
+        assert_eq!(
+            provider_operation(
+                &serde_json::json!({"extendedProperties":{"private":{"randevuOperation":"old", "calendarOperation":"new"}}})
+            ),
+            Some("new")
+        );
+        assert_eq!(provider_operation(&serde_json::Value::Null), None);
     }
 
     #[test]

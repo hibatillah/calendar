@@ -1,5 +1,13 @@
 # Architecture and boundaries
 
+## TypeScript workspace decision
+
+When adding the TanStack Start web app and Expo/React Native mobile app, use **Bun workspaces** with one committed `bun.lock`. Use `workspace:*` for shared API, calendar helpers and design-token packages. Pin Bun in the root package manifest and CI; use frozen-lockfile installs. Keep Node available for Expo and tooling that requires it; Bun as package manager does not replace Metro, native build tools or the mobile JavaScript engine.
+
+Add **Turborepo** with those applications to coordinate shared-package dependencies, type checking, tests and web builds. Cache deterministic outputs only; disable caching for development servers, OAuth flows, deployment and signing. Keep native Android/iOS builds in their dedicated CI jobs. Cargo remains the Rust workspace/build system, with its own lockfile and cache. Do not wrap every Rust crate in a JavaScript package or duplicate Cargo's build graph.
+
+The repository is currently Rust-only, so these TypeScript tools are a recorded decision, not installed placeholder infrastructure. References: [Bun workspaces](https://bun.sh/docs/pm/workspaces), [Turborepo installation](https://turborepo.com/docs/getting-started/installation), [Expo with Bun](https://docs.expo.dev/guides/using-bun/).
+
 ## Current local application
 
 ```text

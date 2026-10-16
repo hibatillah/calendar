@@ -8,8 +8,8 @@ pub fn create_tray() -> Result<TrayIcon, Box<dyn std::error::Error>> {
     let menu = Menu::new();
     menu.append_items(&[
         &MenuItem::with_id("agenda", "Upcoming schedule", true, None),
-        &MenuItem::with_id("open", "Open Randevu", true, None),
-        &MenuItem::with_id("quit", "Quit Randevu", true, None),
+        &MenuItem::with_id("open", "Open Calendar", true, None),
+        &MenuItem::with_id("quit", "Quit Calendar", true, None),
     ])?;
     let mut pixels = Vec::new();
     for vertical in 0..32 {
@@ -20,7 +20,7 @@ pub fn create_tray() -> Result<TrayIcon, Box<dyn std::error::Error>> {
         }
     }
     Ok(TrayIconBuilder::new()
-        .with_tooltip("Randevu · upcoming schedule")
+        .with_tooltip("Calendar · upcoming schedule")
         .with_icon(Icon::from_rgba(pixels, 32, 32)?)
         .with_menu(Box::new(menu))
         .with_menu_on_left_click(false)

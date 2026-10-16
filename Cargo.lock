@@ -1036,6 +1036,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "calendar-backend"
+version = "0.1.0"
+dependencies = [
+ "async-graphql",
+ "async-graphql-axum",
+ "axum",
+ "base64 0.22.1",
+ "calendar-core",
+ "calendar-telemetry",
+ "chrono",
+ "chrono-tz",
+ "dotenvy",
+ "http-body-util",
+ "keyring",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "thiserror 2.0.21",
+ "tokio",
+ "tower",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "calendar-core"
 version = "0.1.0"
 dependencies = [
@@ -1046,12 +1073,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "calendar-desktop"
+version = "0.1.0"
+dependencies = [
+ "calendar-core",
+ "calendar-layout",
+ "calendar-telemetry",
+ "chrono",
+ "chrono-tz",
+ "gpui-kit",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tray-icon",
+ "uuid",
+ "windows 0.61.3",
+]
+
+[[package]]
 name = "calendar-layout"
 version = "0.1.0"
 dependencies = [
  "calendar-core",
  "chrono",
  "chrono-tz",
+]
+
+[[package]]
+name = "calendar-telemetry"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dotenvy",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "posthog-rs",
+ "serde",
+ "serde_json",
+ "tracing",
+ "tracing-appender",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
@@ -6721,73 +6788,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "513962919efc330f829edb2535844d1b912b0fbe2ca165d613e4e8788bb05a5a"
 dependencies = [
  "rand_core 0.9.5",
-]
-
-[[package]]
-name = "randevu-backend"
-version = "0.1.0"
-dependencies = [
- "async-graphql",
- "async-graphql-axum",
- "axum",
- "base64 0.22.1",
- "calendar-core",
- "chrono",
- "chrono-tz",
- "dotenvy",
- "http-body-util",
- "keyring",
- "randevu-telemetry",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "sqlx",
- "thiserror 2.0.21",
- "tokio",
- "tower",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "randevu-desktop"
-version = "0.1.0"
-dependencies = [
- "calendar-core",
- "calendar-layout",
- "chrono",
- "chrono-tz",
- "gpui-kit",
- "randevu-telemetry",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "tracing",
- "tray-icon",
- "uuid",
- "windows 0.61.3",
-]
-
-[[package]]
-name = "randevu-telemetry"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "dotenvy",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
- "posthog-rs",
- "serde",
- "serde_json",
- "tracing",
- "tracing-appender",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]

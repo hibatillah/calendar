@@ -20,7 +20,7 @@ struct DesktopState {
 impl Global for DesktopState {}
 
 fn main() {
-    let _logging = randevu_telemetry::init("desktop");
+    let _logging = calendar_telemetry::init("desktop");
     gpui_kit::application()
         .with_assets(assets::AllAssets)
         .run(|context| {
@@ -113,10 +113,10 @@ pub fn open_main(context: &mut App) {
                 window_min_size: Some(size(px(1050.0), px(680.0))),
                 window_background: platform::backdrop(),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("Randevu".into()),
+                    title: Some("Calendar".into()),
                     ..TitleBar::title_bar_options()
                 }),
-                app_id: Some("app.randevu.desktop".into()),
+                app_id: Some("app.calendar.desktop".into()),
                 ..TitleBar::window_options()
             },
             |window, context| {
@@ -135,7 +135,7 @@ pub fn open_main(context: &mut App) {
                     .new(|context| base::Root::new(view, window, context).bg(transparent_black()))
             },
         )
-        .expect("Open Randevu window");
+        .expect("Open Calendar window");
     context.global_mut::<DesktopState>().main = Some(handle);
     tracing::info!(action = "main_window_opened");
 }

@@ -1,11 +1,11 @@
 [package]
-name = "randevu-backend"
+name = "calendar-backend"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
 calendar-core.workspace = true
-randevu-telemetry.workspace = true
+calendar-telemetry.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true

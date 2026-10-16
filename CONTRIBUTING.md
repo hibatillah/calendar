@@ -26,7 +26,7 @@ macOS builds need a Mac with the Xcode tools. Use normal `cargo` commands there;
 
 ## Logs and privacy
 
-Log meaningful state changes with `action`, object/operation IDs and outcome. Never log OAuth credentials, session tokens, full API requests, or event content. Use `RUST_LOG` for filtering and `RANDEVU_LOG_DIR` to select a local directory. Cache/journal files contain event content; logs are diagnostics, not an audit backup.
+Log meaningful state changes with `action`, object/operation IDs and outcome. Never log OAuth credentials, session tokens, full API requests, or event content. Use `RUST_LOG` for filtering and `CALENDAR_LOG_DIR` to select a local directory. Cache/journal files contain event content; logs are diagnostics, not an audit backup.
 
 References: [Axum's testing example](https://github.com/tokio-rs/axum/blob/main/examples/testing/src/main.rs), [GPUI test context](https://docs.rs/gpui/latest/gpui/attr.test.html).
 

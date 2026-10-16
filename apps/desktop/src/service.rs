@@ -60,7 +60,7 @@ pub enum Update {
     GoogleError(String),
     SyncStatus(bool, Option<String>),
     AuthorizationUrl(String),
-    Diagnostics(Vec<randevu_telemetry::LogEntry>),
+    Diagnostics(Vec<calendar_telemetry::LogEntry>),
     Snapshot(Vec<CalendarEvent>, bool),
     Saved(CalendarEvent),
     Failed(String),
@@ -148,7 +148,7 @@ pub fn start() -> Connection {
                             Err(_) => { let _ = updates.send(Update::Status(false)); continue; }
                         }
                         if let Ok(token) = std::fs::read_to_string(".local/session-token")
-                            && let Ok(response) = client.get("http://127.0.0.1:47821/diagnostics/logs").header("x-randevu-token", token.trim()).send().await
+                            && let Ok(response) = client.get("http://127.0.0.1:47821/diagnostics/logs").header("x-calendar-token", token.trim()).send().await
                             && response.status().is_success()
                             && let Ok(records) = response.json().await {
                             let _ = updates.send(Update::Diagnostics(records));
@@ -242,9 +242,9 @@ async fn query(client: &reqwest::Client, body: Value) -> Result<Value, String> {
         .map_err(|_| "Start the local backend to edit events.".to_string())?;
     let mut request = client
         .post("http://127.0.0.1:47821/graphql")
-        .header("x-randevu-token", token.trim());
+        .header("x-calendar-token", token.trim());
     request = request.json(&body);
-    for (key, value) in randevu_telemetry::outgoing_trace_headers() {
+    for (key, value) in calendar_telemetry::outgoing_trace_headers() {
         request = request.header(key, value);
     }
     let response = request

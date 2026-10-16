@@ -70,7 +70,7 @@ GraphQL execution errors are returned in the `errors` array, normally with HTTP 
 | `READ_ONLY` | Stored event cannot be edited |
 | `INTERNAL_ERROR` | Local persistence failed |
 
-GraphQL syntax/schema validation errors also appear in `errors`, but may not have an application code. Missing/wrong authentication or an unapproved browser origin returns HTTP 401. Requests use the `x-randevu-token` header. The only allowed browser origin is `http://127.0.0.1:47821`; native callers omit Origin. GraphiQL assets are local, and the page never embeds or persists your session token.
+GraphQL syntax/schema validation errors also appear in `errors`, but may not have an application code. Missing/wrong authentication or an unapproved browser origin returns HTTP 401. Requests use the `x-calendar-token` header. The only allowed browser origin is `http://127.0.0.1:47821`; native callers omit Origin. GraphiQL assets are local, and the page never embeds or persists your session token.
 
 For example, inspect schema documentation directly:
 

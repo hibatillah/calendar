@@ -29,9 +29,9 @@ jobs:
       - name: Format
         run: ./scripts/cargo.ps1 fmt --all '--' --check
       - name: Tests including GPUI interactions
-        run: ./scripts/cargo.ps1 test --locked --workspace --features randevu-desktop/ui-tests
+        run: ./scripts/cargo.ps1 test --locked --workspace --features calendar-desktop/ui-tests
       - name: Clippy
-        run: ./scripts/cargo.ps1 clippy --locked --workspace --all-targets --features randevu-desktop/ui-tests '--' '-D' warnings
+        run: ./scripts/cargo.ps1 clippy --locked --workspace --all-targets --features calendar-desktop/ui-tests '--' '-D' warnings
 
   windows-desktop:
     name: Windows portable build
@@ -54,7 +54,7 @@ jobs:
         run: ./scripts/package-windows.ps1
       - uses: actions/upload-artifact@v4
         with:
-          name: randevu-windows-x64-${{ github.sha }}
-          path: dist/randevu-windows-x64.zip
+          name: calendar-windows-x64-${{ github.sha }}
+          path: dist/calendar-windows-x64.zip
           if-no-files-found: error
           retention-days: 14

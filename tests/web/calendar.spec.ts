@@ -3,7 +3,7 @@ const snapshot = { googleConnection: { configured: true, connected: true, connec
 test.beforeEach(async ({ page }) => {
   await page.clock.install({ time: new Date('2026-10-15T03:00:00Z') });
   await page.route('**/api/graphql', route => route.fulfill({ json: { data: snapshot } }));
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.getByText('tester@example.test', { exact: true })).toBeVisible();
 });
 test('Today, sidebar reopening, month shortcut and settings work', async ({ page }) => {

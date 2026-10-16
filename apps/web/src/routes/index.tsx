@@ -1,13 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
-import { CalendarApp } from "../components/calendar-app";
-export const Route = createFileRoute("/")({ component: Home, ssr: false });
-function Home() {
-  const [client] = useState(() => new QueryClient());
-  return (
-    <QueryClientProvider client={client}>
-      <CalendarApp />
-    </QueryClientProvider>
-  );
-}
+import { LandingPage } from "../components/landing-page";
+export const Route = createFileRoute("/")({
+  component: LandingPage,
+  head: () => ({
+    meta: [
+      { title: "Calendar — Your week, clearly." },
+      {
+        name: "description",
+        content:
+          "A simple home for your Google calendars. Plan your week on desktop, see your day on mobile, and keep what’s next close at hand.",
+      },
+      { property: "og:title", content: "Calendar — Your week, clearly." },
+      {
+        property: "og:description",
+        content:
+          "Your Google calendars, together in one calm space. Explore the Calendar preview.",
+      },
+    ],
+  }),
+});

@@ -72,7 +72,7 @@ fn repository_error(error: RepositoryError) -> async_graphql::Error {
         RepositoryError::Conflict(_) => "CONFLICT",
         RepositoryError::ReadOnly => "READ_ONLY",
         RepositoryError::Storage(_) => {
-            randevu_telemetry::report_error("graphql_storage_failed");
+            calendar_telemetry::report_error("graphql_storage_failed");
             "INTERNAL_ERROR"
         }
     };
@@ -300,7 +300,7 @@ async fn authorize(State(state): State<AppState>, request: Request, next: Next) 
         .is_none_or(|origin| origin == "http://127.0.0.1:47821");
     if !origin_allowed
         || headers
-            .get("x-randevu-token")
+            .get("x-calendar-token")
             .and_then(|value| value.to_str().ok())
             != Some(state.token.as_str())
     {
@@ -311,15 +311,15 @@ async fn authorize(State(state): State<AppState>, request: Request, next: Next) 
         .get("traceparent")
         .and_then(|value| value.to_str().ok())
     {
-        randevu_telemetry::accept_trace_parent(&span, parent);
+        calendar_telemetry::accept_trace_parent(&span, parent);
     }
     next.run(request).instrument(span).await
 }
 async fn graphql(State(state): State<AppState>, request: GraphQLRequest) -> GraphQLResponse {
     state.schema.execute(request.into_inner()).await.into()
 }
-async fn diagnostics() -> Json<Vec<randevu_telemetry::LogEntry>> {
-    Json(randevu_telemetry::recent_logs())
+async fn diagnostics() -> Json<Vec<calendar_telemetry::LogEntry>> {
+    Json(calendar_telemetry::recent_logs())
 }
 
 #[cfg(test)]
@@ -336,7 +336,7 @@ mod tests {
     fn request(body: serde_json::Value) -> Request {
         Request::post("/graphql")
             .header("content-type", "application/json")
-            .header("x-randevu-token", "test-token")
+            .header("x-calendar-token", "test-token")
             .body(Body::from(body.to_string()))
             .unwrap()
     }
@@ -360,7 +360,7 @@ mod tests {
         ] {
             let mut request = Request::post("/graphql").header("content-type", "application/json");
             if let Some(token) = token {
-                request = request.header("x-randevu-token", token);
+                request = request.header("x-calendar-token", token);
             }
             if let Some(origin) = origin {
                 request = request.header("origin", origin);

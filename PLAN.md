@@ -1,4 +1,4 @@
-# Randevu: Windows desktop implementation plan
+# Calendar: Windows desktop implementation plan
 
 Status: local desktop/backend preview implemented and running. Connected Google release remains outstanding; see the implementation status below.
 
@@ -72,7 +72,7 @@ Create crates as their implementation begins. Keep backend auth and database acc
 5. Preserve resize borders, window dragging from empty chrome, double-click maximize, and clickable toolbar controls without accidental window dragging.
 6. Create a tray icon and a small GPUI agenda popup. Route tray events into GPUI safely through the Windows message loop.
 7. Position the popup near the tray activation location, clamp it to the monitor work area, account for DPI scaling, and dismiss it on outside focus loss or Escape.
-8. Default close behavior: hide to tray while the tray is active. Right-click menu offers Open Randevu and Quit. If tray initialization fails, closing must not leave an inaccessible background process.
+8. Default close behavior: hide to tray while the tray is active. Right-click menu offers Open Calendar and Quit. If tray initialization fails, closing must not leave an inaccessible background process.
 
 Acceptance: executable launches; header and sidebar translucency are visually verified over light and dark backgrounds; minimize/maximize/restore work; tray popup works with the main window hidden; Quit exits cleanly. Record OS/backdrop limitations and provide a readable fallback when system transparency is disabled.
 
@@ -92,8 +92,8 @@ Acceptance: user can launch the preview and review the requested interactions be
 
 ## Milestone 3: Google account connection and cached viewing
 
-1. Add PostgreSQL migrations for Randevu users, sessions, connected Google accounts, calendars, provider events, sync cursors, and sync-job state. Every account/calendar/event query is scoped to the authenticated user.
-2. Separate Randevu identity from connected Google accounts; allow the model to hold multiple Google accounts per user.
+1. Add PostgreSQL migrations for Calendar users, sessions, connected Google accounts, calendars, provider events, sync cursors, and sync-job state. Every account/calendar/event query is scoped to the authenticated user.
+2. Separate Calendar identity from connected Google accounts; allow the model to hold multiple Google accounts per user.
 3. Implement system-browser authorization with state, PKCE where applicable, and a short-lived one-time desktop handoff. Never embed a confidential client secret in the desktop app or pass long-lived session tokens in redirect URLs.
 4. Validate the desktop sign-in design against Google's client-type and redirect requirements before implementation. Document Google Cloud project, consent screen, credentials, and Calendar API setup.
 5. Implement calendar discovery, access roles, initial paginated event sync, incremental sync, cancellation handling, and invalid-sync-token recovery. Preserve recurrence masters, exceptions, original occurrence identity, and provider ETags.

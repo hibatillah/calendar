@@ -1,13 +1,13 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-$backendPath = Join-Path $PSScriptRoot 'randevu-backend.exe'
-$desktopPath = Join-Path $PSScriptRoot 'randevu-desktop.exe'
+$backendPath = Join-Path $PSScriptRoot 'calendar-backend.exe'
+$desktopPath = Join-Path $PSScriptRoot 'calendar-desktop.exe'
 try {
     $health = Invoke-RestMethod 'http://127.0.0.1:47821/health' -TimeoutSec 2
     if ($health.mode -ne 'GOOGLE_CALENDAR') { throw 'An unrelated service is using port 47821.' }
-    if (!(Test-Path -LiteralPath '.local/session-token')) { throw 'Another Randevu installation is running. Close it before launching this copy.' }
+    if (!(Test-Path -LiteralPath '.local/session-token')) { throw 'Another Calendar installation is running. Close it before launching this copy.' }
 } catch {
-    if ($_.Exception.Message -match 'Another Randevu|unrelated service') { throw }
+    if ($_.Exception.Message -match 'Another Calendar|unrelated service') { throw }
     Start-Process -FilePath $backendPath -WorkingDirectory $PSScriptRoot -WindowStyle Hidden
     $ready = $false
     for ($attempt = 0; $attempt -lt 30; $attempt++) {

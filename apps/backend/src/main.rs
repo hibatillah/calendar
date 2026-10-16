@@ -1,8 +1,8 @@
-use randevu_backend::{repository::Repository, router, schema};
+use calendar_backend::{repository::Repository, router, schema};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _logging = randevu_telemetry::init("backend");
+    let _logging = calendar_telemetry::init("backend");
     std::fs::create_dir_all(".local")?;
     let repository = Repository::open("sqlite:.local/backend.db?mode=rwc").await?;
     repository.remove_preview_data().await?;

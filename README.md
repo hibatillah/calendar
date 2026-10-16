@@ -1,6 +1,8 @@
-# Randevu
+# Calendar
 
 A native calendar, starting with Windows and designed to keep platform code separate for macOS. Rust/GPUI desktop, Axum/GraphQL backend, and SQLite for this entirely local preview.
+
+Web and mobile will use Bun workspaces plus Turborepo alongside Cargo; see the [workspace decision](docs/architecture.md#typescript-workspace-decision). Those applications and their JavaScript tooling are not scaffolded yet.
 
 ## Run locally
 
@@ -13,9 +15,19 @@ Prerequisites: Rust's MSVC toolchain, Visual Studio C++ Build Tools, Windows SDK
 The script builds both applications, starts the backend at `127.0.0.1:47821`, and opens the desktop. For separate terminals:
 
 ```powershell
-./scripts/cargo.ps1 run -p randevu-backend
-./scripts/cargo.ps1 run -p randevu-desktop
+./scripts/cargo.ps1 run -p calendar-backend
+./scripts/cargo.ps1 run -p calendar-desktop
 ```
+
+For automatic GPUI rebuild/restart during development:
+
+```powershell
+./scripts/dev-desktop.ps1
+```
+
+The watcher debounces changes to Rust sources, Cargo manifests and bundled assets. It builds incrementally, keeps the last working app open when compilation fails, and restarts only binaries whose contents changed. Backend-only changes do not restart the desktop. Changes saved during compilation trigger another build. A one-time handoff moves any existing debug processes to copies in `.local/dev-desktop/`, releasing Windows executable locks while preserving Cargo's warm cache. Run only one watcher per checkout; avoid `start.ps1` or concurrent Cargo builds while it is active.
+
+This is automatic rebuild/restart, not in-process hot reload: saved settings, accounts and caches survive, but unsaved forms, scroll position and transient UI state reset. Avoid saving source while an event write is pending. Ctrl+C stops watching and leaves the apps running. `-Once` builds/restarts once for validation. PowerShell 7 is also usable on macOS, but this watcher has only been exercised on Windows.
 
 Run commands from the repository root. State and logs go into ignored `.local/`. Protected API endpoints requires the local token in `.local/session-token`; it is not intended to be exposed to the network. There is no hosted backend. Optional PostHog uploads are disabled until explicitly configured; see [telemetry](docs/telemetry.md).
 
@@ -38,9 +50,9 @@ Scroll sideways with a trackpad, horizontal wheel, or **Shift + mouse wheel** to
 
 ## Downloads and CI
 
-GitHub Actions runs formatting, Rust/GPUI tests and Clippy on pull requests and pushes to `main`. A successful check job enables a Windows release build, uploaded as the `randevu-windows-x64-<commit>` artifact for 14 days. Download it from the workflow run and extract both ZIP layers if GitHub wraps the portable ZIP.
+GitHub Actions runs formatting, Rust/GPUI tests and Clippy on pull requests and pushes to `main`. A successful check job enables a Windows release build, uploaded as the `calendar-windows-x64-<commit>` artifact for 14 days. Download it from the workflow run and extract both ZIP layers if GitHub wraps the portable ZIP.
 
-The portable package contains both executables. Copy `.env.example` to `.env`, configure your own Desktop OAuth credentials as described in [Google setup](docs/google.md), and run `Run-Randevu.ps1` with PowerShell. Keep the package in a writable folder. It requires neither Rust nor Visual Studio; the local backend remains on port 47821. These are unsigned preview builds, not signed installers. No account credentials, telemetry token or local calendar cache is packaged.
+The portable package contains both executables. Copy `.env.example` to `.env`, configure your own Desktop OAuth credentials as described in [Google setup](docs/google.md), and run `Run-Calendar.ps1` with PowerShell. Keep the package in a writable folder. It requires neither Rust nor Visual Studio; the local backend remains on port 47821. These are unsigned preview builds, not signed installers. No account credentials, telemetry token or local calendar cache is packaged.
 
 After the bootstrap commit, changes go through feature branches and PRs with passing CI. Web/mobile builds will be added with those apps.
 
@@ -54,8 +66,8 @@ Display time zone currently defaults to Asia/Jakarta. Dragging snaps to 15 minut
 
 ```powershell
 ./scripts/cargo.ps1 fmt --all '--' --check
-./scripts/cargo.ps1 test --workspace --features randevu-desktop/ui-tests
-./scripts/cargo.ps1 clippy --workspace --all-targets --features randevu-desktop/ui-tests '--' '-D' warnings
+./scripts/cargo.ps1 test --workspace --features calendar-desktop/ui-tests
+./scripts/cargo.ps1 clippy --workspace --all-targets --features calendar-desktop/ui-tests '--' '-D' warnings
 ```
 
 GPUI tests run against a test window, without operating your desktop. Native appearance, tray placement and pointer hit targets still need runtime inspection. macOS boundaries exist, but no macOS build has been verified here.

@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Randevu GraphiQL</title>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Calendar GraphiQL</title>
 <link rel="stylesheet" href="/docs/graphiql.css">
 <style>body{margin:0;font:13px system-ui;background:#202020;color:#ddd}header{padding:10px 16px;display:flex;gap:12px;align-items:center}input{width:290px;padding:6px}button{padding:6px 12px}a{color:#9ccaff}#graphiql{height:calc(100vh - 92px)}p{margin:0;padding:0 16px 10px;font-size:12px}</style></head>
-<body><header><strong>Randevu GraphQL</strong><label>Local session token <input id="token" type="password" autocomplete="off" placeholder="Paste .local/session-token"></label><button id="connect">Connect</button><a href="/schema.graphql">Read schema SDL</a></header>
+<body><header><strong>Calendar GraphQL</strong><label>Local session token <input id="token" type="password" autocomplete="off" placeholder="Paste .local/session-token"></label><button id="connect">Connect</button><a href="/schema.graphql">Read schema SDL</a></header>
 <p id="status">Use the local session token, not your PostHog token. Connect to browse schema documentation and run queries. Credentials stay in memory.</p>
 <div id="graphiql"></div>
 <script src="/docs/react.js"></script><script src="/docs/react-dom.js"></script><script src="/docs/graphiql.js"></script>
@@ -15,7 +15,7 @@ document.getElementById('connect').addEventListener('click', () => {
   if (!token) { document.getElementById('status').textContent = 'Paste the local session token first.'; return; }
   document.getElementById('token').value = '';
   const fetcher = async params => {
-    const response = await fetch('/graphql', {method:'POST',headers:{'Content-Type':'application/json','x-randevu-token':token},body:JSON.stringify(params)});
+    const response = await fetch('/graphql', {method:'POST',headers:{'Content-Type':'application/json','x-calendar-token':token},body:JSON.stringify(params)});
     document.getElementById('status').textContent = response.status === 401 ? 'Authentication failed. Check .local/session-token.' : 'Connected locally. Open Docs to browse the schema; use the play button to run your query.';
     return response.json();
   };

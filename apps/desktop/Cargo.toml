@@ -1,5 +1,5 @@
 [package]
-name = "randevu-desktop"
+name = "calendar-desktop"
 version.workspace = true
 edition.workspace = true
 
@@ -10,7 +10,7 @@ ui-tests = ["gpui-kit/test-support"]
 gpui-kit = { version = "=0.7.1", default-features = false, features = ["component", "assets"] }
 calendar-core.workspace = true
 calendar-layout.workspace = true
-randevu-telemetry.workspace = true
+calendar-telemetry.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
 serde.workspace = true

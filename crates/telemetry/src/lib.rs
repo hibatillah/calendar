@@ -161,7 +161,7 @@ fn remote(
         format!("Bearer {}", configuration.project_token),
     )]);
     let resource = Resource::builder()
-        .with_service_name(format!("randevu-{component}"))
+        .with_service_name(format!("calendar-{component}"))
         .with_attributes([
             opentelemetry::KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
             opentelemetry::KeyValue::new("deployment.environment.name", "local"),
@@ -211,7 +211,7 @@ fn remote(
 }
 
 pub fn init(component: &str) -> TelemetryGuard {
-    let directory = std::env::var("RANDEVU_LOG_DIR").unwrap_or_else(|_| ".local/logs".into());
+    let directory = std::env::var("CALENDAR_LOG_DIR").unwrap_or_else(|_| ".local/logs".into());
     let appender = tracing_appender::rolling::Builder::new()
         .rotation(tracing_appender::rolling::Rotation::DAILY)
         .filename_prefix(component)
@@ -259,12 +259,12 @@ pub fn init(component: &str) -> TelemetryGuard {
             None
         }
     };
-    let logger = providers.as_ref().map(|(logs, _)| logs.logger("randevu"));
+    let logger = providers.as_ref().map(|(logs, _)| logs.logger("calendar"));
     let trace_layer = providers.as_ref().map(|(_, traces)| {
         tracing_opentelemetry::layer()
-            .with_tracer(traces.tracer("randevu"))
+            .with_tracer(traces.tracer("calendar"))
             .with_filter(tracing_subscriber::filter::filter_fn(|metadata| {
-                metadata.is_span() && metadata.target().starts_with("randevu")
+                metadata.is_span() && metadata.target().starts_with("calendar")
             }))
     });
     tracing_subscriber::registry()
@@ -322,7 +322,7 @@ where
     fn on_event(&self, event: &tracing::Event<'_>, _: Context<'_, SubscriberType>) {
         let metadata = event.metadata();
         // Export only our instrumented actions; exporter diagnostics must not feed themselves.
-        if !metadata.target().starts_with("randevu") {
+        if !metadata.target().starts_with("calendar") {
             if matches!(
                 *metadata.level(),
                 tracing::Level::WARN | tracing::Level::ERROR

@@ -92,7 +92,7 @@ pub struct CalendarApp {
     pub agenda_only: bool,
     activity_open: bool,
     activity_errors_only: bool,
-    backend_logs: Vec<randevu_telemetry::LogEntry>,
+    backend_logs: Vec<calendar_telemetry::LogEntry>,
 }
 
 impl CalendarApp {
@@ -161,7 +161,7 @@ impl CalendarApp {
         let connection = service::start();
         #[cfg(test)]
         let connection = service::disconnected();
-        randevu_telemetry::track(
+        calendar_telemetry::track(
             "screen_viewed",
             if agenda_only {
                 "tray_agenda"
@@ -267,12 +267,12 @@ impl CalendarApp {
                     self.pending_change = None;
                     self.message = "Saved to Google Calendar.".into();
                     self.selected = None;
-                    randevu_telemetry::track("event_save_completed", "calendar");
+                    calendar_telemetry::track("event_save_completed", "calendar");
                 }
                 Update::Failed(error) => {
                     self.rollback_pending_change();
                     self.message = format!("Save failed: {error}");
-                    randevu_telemetry::report_error("calendar_worker_failed");
+                    calendar_telemetry::report_error("calendar_worker_failed");
                 }
                 Update::Status(online) => {
                     if self.online != online {
@@ -356,7 +356,7 @@ impl CalendarApp {
         } else {
             String::new()
         };
-        randevu_telemetry::track("screen_viewed", "event_editor");
+        calendar_telemetry::track("screen_viewed", "event_editor");
         let start = event.start.with_timezone(&self.timezone);
         let end = event.end.with_timezone(&self.timezone);
         for (input, value) in [
@@ -420,7 +420,7 @@ impl CalendarApp {
             event,
         };
         tracing::info!(action="save_requested", operation_id=%command.operation_id, event_id=%command.event.event_id);
-        randevu_telemetry::track("event_save_requested", "event_editor_or_gesture");
+        calendar_telemetry::track("event_save_requested", "event_editor_or_gesture");
         self.pending = true;
         self.message = "Saving…".into();
         if self
@@ -550,7 +550,7 @@ impl CalendarApp {
     }
 
     fn navigate(&mut self, days: i64, context: &mut Context<Self>) {
-        randevu_telemetry::track("control_clicked", "week_navigation");
+        calendar_telemetry::track("control_clicked", "week_navigation");
         self.date = if self.month_view {
             let first = self.date.with_day(1).unwrap();
             if days < 0 {
@@ -774,14 +774,14 @@ impl CalendarApp {
                     .text_color(rgb(MUTED))
                     .on_click(context.listener(|app, _, _, context| {
                         app.activity_open = !app.activity_open;
-                        randevu_telemetry::track("screen_viewed", "activity");
+                        calendar_telemetry::track("screen_viewed", "activity");
                         context.notify();
                     })),
             )
     }
 
     fn activity_panel(&self, context: &mut Context<Self>) -> impl IntoElement {
-        let mut records = randevu_telemetry::recent_logs();
+        let mut records = calendar_telemetry::recent_logs();
         records.extend(self.backend_logs.iter().cloned());
         records.sort_by(|left, right| right.timestamp.cmp(&left.timestamp));
         records.retain(|record| {
@@ -829,7 +829,7 @@ impl CalendarApp {
                     .pb_2()
                     .text_size(px(11.0))
                     .text_color(rgb(MUTED))
-                    .child(randevu_telemetry::status()),
+                    .child(calendar_telemetry::status()),
             )
             .child(
                 div()
@@ -856,12 +856,12 @@ impl CalendarApp {
                     .child(
                         button("activity-copy", "Copy diagnostics").on_click(context.listener(
                             |app, _, _, context| {
-                                let mut records = randevu_telemetry::recent_logs();
+                                let mut records = calendar_telemetry::recent_logs();
                                 records.extend(app.backend_logs.iter().cloned());
                                 if let Ok(text) = serde_json::to_string_pretty(&records) {
                                     context.write_to_clipboard(ClipboardItem::new_string(text));
                                 }
-                                randevu_telemetry::track("control_clicked", "copy_diagnostics");
+                                calendar_telemetry::track("control_clicked", "copy_diagnostics");
                             },
                         )),
                     ),
@@ -1038,7 +1038,7 @@ impl CalendarApp {
         if matches!(gesture.kind, GestureKind::Create) {
             self.edit(preview, window, context);
         } else if gesture.changed {
-            randevu_telemetry::track(
+            calendar_telemetry::track(
                 "event_gesture_completed",
                 match gesture.kind {
                     GestureKind::Move => "move",
@@ -2192,7 +2192,7 @@ fn icon_button(identifier: &'static str, path: &'static str) -> Stateful<Div> {
         .cursor_pointer()
         .text_color(rgb(MUTED))
         .hover(|style| style.bg(rgb(0xffffff).opacity(0.07)))
-        .on_click(move |_, _, _| randevu_telemetry::track("control_clicked", identifier))
+        .on_click(move |_, _, _| calendar_telemetry::track("control_clicked", identifier))
         .child(svg().path(path).size(px(18.0)).text_color(rgb(0xbdbdbd)))
 }
 
@@ -2203,7 +2203,7 @@ fn button(identifier: &'static str, label: &'static str) -> Stateful<Div> {
         .on_mouse_down(MouseButton::Left, |_, _, context| {
             context.stop_propagation()
         })
-        .on_click(move |_, _, _| randevu_telemetry::track("control_clicked", identifier))
+        .on_click(move |_, _, _| calendar_telemetry::track("control_clicked", identifier))
         .flex()
         .items_center()
         .px_2()
@@ -2274,7 +2274,7 @@ mod tests {
         app.update(context, |app, _| {
             app.activity_open = true;
             app.backend_logs = (0..100)
-                .map(|index| randevu_telemetry::LogEntry {
+                .map(|index| calendar_telemetry::LogEntry {
                     timestamp: format!("2026-10-15T10:00:{:02}Z", index % 60),
                     component: "backend".into(),
                     level: "INFO".into(),

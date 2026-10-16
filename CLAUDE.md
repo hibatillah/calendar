@@ -1,4 +1,4 @@
-# Randevu
+# Calendar
 
 Windows-first GPUI calendar with an Axum/GraphQL backend. Preserve macOS boundaries; mobile and web are deferred.
 

@@ -2,7 +2,7 @@
 
 A native calendar, starting with Windows and designed to keep platform code separate for macOS. Rust/GPUI desktop, Axum/GraphQL backend, and SQLite for this entirely local preview.
 
-The TanStack Start web app uses Bun workspaces and Turborepo alongside Cargo. See [web development](docs/web.md) for setup and the current local-backend boundary.
+The TanStack Start web app and Expo/React Native mobile app use Bun workspaces and Turborepo alongside Cargo. See [web development](docs/web.md) and [mobile development](docs/mobile.md) for setup and the current local-backend boundary.
 
 ## Run locally
 
@@ -54,7 +54,7 @@ GitHub Actions runs formatting, Rust/GPUI tests and Clippy on pull requests and 
 
 The portable package contains both executables. Copy `.env.example` to `.env`, configure your own Desktop OAuth credentials as described in [Google setup](docs/google.md), and run `Run-Calendar.ps1` with PowerShell. Keep the package in a writable folder. It requires neither Rust nor Visual Studio; the local backend remains on port 47821. These are unsigned preview builds, not signed installers. No account credentials, telemetry token or local calendar cache is packaged.
 
-After the bootstrap commit, changes go through feature branches and PRs with passing CI. The web workflow checks generated GraphQL contracts, TypeScript, shared date tests, browser interactions and the production build.
+After the bootstrap commit, changes go through feature branches and PRs with passing CI. The web workflow checks generated GraphQL contracts, TypeScript, shared date tests, browser interactions and the production build. Mobile CI exports Android/iOS bundles, tests the web-rendered mobile UI, and builds Android preview APKs and unsigned iOS simulator archives.
 
 ## License
 

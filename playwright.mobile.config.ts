@@ -1,0 +1,2 @@
+import { defineConfig } from '@playwright/test';
+export default defineConfig({ testDir: './tests/mobile', use: { baseURL: 'http://127.0.0.1:8082', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, webServer: { command: 'bunx serve apps/mobile/dist -l tcp://127.0.0.1:8082 --no-clipboard', url: 'http://127.0.0.1:8082', reuseExistingServer: !process.env.CI, timeout: 120000 } });

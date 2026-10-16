@@ -1,6 +1,8 @@
 import { useState } from "react";
 import {
   Modal,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Switch,
@@ -13,6 +15,7 @@ import { X } from "lucide-react-native";
 import { colors } from "@calendar/design-tokens";
 import { addDays, clockTime, dateKey, localInstant } from "@calendar/calendar";
 import type { EventInput } from "@calendar/api";
+import { DateField } from "./date-field";
 export const textStyle = { fontFamily: "Inter", color: colors.text };
 export const inputStyle = {
   ...textStyle,
@@ -82,7 +85,12 @@ export function Sheet({
             <X color={colors.text} />
           </Action>
         </View>
-        {children}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          {children}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );
@@ -93,12 +101,16 @@ export function MobileEditor({
   onSave,
   saving,
   calendars,
+  editable = true,
+  onDirty,
 }: {
   draft: EventInput;
   onChange: (event: EventInput) => void;
   onSave: (event: EventInput) => void;
   saving: boolean;
   calendars: { id: string; summary: string }[];
+  editable?: boolean;
+  onDirty: () => void;
 }) {
   const [startValue, setStartValue] = useState(
     `${dateKey(new Date(draft.start))} ${clockTime(draft.start)}`,
@@ -111,10 +123,24 @@ export function MobileEditor({
     try {
       const start = startValue.trim().split(/\s+/);
       const end = endValue.trim().split(/\s+/);
+      const startInstant = localInstant(
+        start[0],
+        draft.allDay ? "00:00" : start[1],
+      );
+      const endInstant = localInstant(end[0], draft.allDay ? "00:00" : end[1]);
+      if (!draft.title.trim()) {
+        setError("Add an event title.");
+        return;
+      }
+      if (Date.parse(endInstant) <= Date.parse(startInstant)) {
+        setError("The end must be after the start.");
+        return;
+      }
       onSave({
         ...draft,
-        start: localInstant(start[0], start[1]),
-        end: localInstant(end[0], end[1]),
+        title: draft.title.trim(),
+        start: startInstant,
+        end: endInstant,
       });
       setError("");
     } catch {
@@ -124,6 +150,7 @@ export function MobileEditor({
   return (
     <ScrollView
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       contentContainerStyle={{ padding: 24, gap: 16 }}
     >
       <TextInput
@@ -135,21 +162,29 @@ export function MobileEditor({
         editable={!saving && !draft.readOnly}
         onChangeText={(title) => onChange({ ...draft, title })}
       />
-      <Label muted>Starts · YYYY-MM-DD HH:mm</Label>
-      <TextInput
-        accessibilityLabel="Start date and time"
-        style={inputStyle}
+      <Label muted>Starts</Label>
+      <DateField
+        label="Start date and time"
         value={startValue}
-        onChangeText={setStartValue}
-        editable={!saving && !draft.readOnly}
+        onChange={(value) => {
+          onDirty();
+          setStartValue(value);
+        }}
+        disabled={saving || draft.readOnly || !editable}
+        allDay={draft.allDay}
       />
-      <Label muted>Ends · YYYY-MM-DD HH:mm</Label>
-      <TextInput
-        accessibilityLabel="End date and time"
-        style={inputStyle}
+      <Label muted>
+        {draft.allDay ? "Ends before (exclusive date)" : "Ends"}
+      </Label>
+      <DateField
+        label="End date and time"
         value={endValue}
-        onChangeText={setEndValue}
-        editable={!saving && !draft.readOnly}
+        onChange={(value) => {
+          onDirty();
+          setEndValue(value);
+        }}
+        disabled={saving || draft.readOnly || !editable}
+        allDay={draft.allDay}
       />
       <View className="flex-row justify-between items-center">
         <Label>All-day</Label>
@@ -213,12 +248,16 @@ export function MobileEditor({
       {!!error && <Label>{error}</Label>}
       {!draft.readOnly && (
         <Pressable
-          disabled={saving}
+          disabled={saving || !editable}
           className="bg-neutral-100 rounded-xl p-4 items-center"
           onPress={submit}
         >
           <Text style={{ fontFamily: "Inter", color: "#191919" }}>
-            {saving ? "Saving…" : "Save event"}
+            {saving
+              ? "Saving…"
+              : editable
+                ? "Save event"
+                : "Offline · viewing only"}
           </Text>
         </Pressable>
       )}

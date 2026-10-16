@@ -2,7 +2,7 @@
   "expo": {
     "name": "Calendar",
     "slug": "calendar",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -28,6 +28,7 @@
     },
     "plugins": [
       "expo-font",
+      "expo-notifications",
       "expo-secure-store",
       "expo-sqlite",
       "expo-router",
@@ -38,7 +39,8 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "scheme": "calendar"
   }

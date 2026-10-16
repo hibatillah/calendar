@@ -1,0 +1,25 @@
+{
+  "name": "@calendar/api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "graphql": "17.0.2",
+    "@graphql-typed-document-node/core": "3.2.0",
+    "@tanstack/react-query": "5.104.3",
+    "@calendar/calendar": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0"
+  }
+}

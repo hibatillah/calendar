@@ -1,0 +1,62 @@
+fragment CalendarEventFields on EventRecord {
+  eventId
+  calendarId
+  title
+  start
+  end
+  timezone
+  allDay
+  description
+  location
+  color
+  revision
+  readOnly
+}
+query CalendarSnapshot($startDate: String!, $endDate: String!) {
+  googleConnection {
+    configured
+    connected
+    connecting
+    message
+    accounts {
+      id
+      name
+      email
+      picture
+      eventAccess
+      writeAccess
+      connecting
+      message
+      calendars {
+        id
+        summary
+        primary
+        accessRole
+        backgroundColor
+        timeZone
+      }
+    }
+  }
+  events(startDate: $startDate, endDate: $endDate) {
+    ...CalendarEventFields
+  }
+}
+mutation SaveCalendarEvent(
+  $operationId: String!
+  $expectedRevision: Int!
+  $event: EventInput!
+) {
+  saveEvent(
+    operationId: $operationId
+    expectedRevision: $expectedRevision
+    event: $event
+  ) {
+    ...CalendarEventFields
+  }
+}
+mutation ConnectCalendarAccount($accountId: String) {
+  connectGoogle(accountId: $accountId)
+}
+mutation DisconnectCalendarAccount($accountId: String!) {
+  disconnectGoogle(accountId: $accountId)
+}

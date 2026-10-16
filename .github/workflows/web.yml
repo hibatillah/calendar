@@ -1,0 +1,37 @@
+name: Web
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    name: TypeScript and web checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - run: bun run codegen
+      - run: git diff --exit-code -- packages/api/src/generated.ts
+      - run: bun run build
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: calendar-web-${{ github.sha }}
+          path: apps/web/dist/
+          retention-days: 14

@@ -1,0 +1,3 @@
+packages/api/src/generated.ts
+apps/web/src/routeTree.gen.ts
+bun.lock

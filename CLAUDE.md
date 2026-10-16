@@ -1,6 +1,6 @@
 # Calendar
 
-Windows-first GPUI calendar with an Axum/GraphQL backend. Preserve macOS boundaries; mobile and web are deferred.
+Windows-first GPUI calendar with an Axum/GraphQL backend. Preserve macOS boundaries. The TanStack Start client and shared TypeScript packages use Bun/Turborepo. Read `docs/web.md` before changing client transport or authentication.
 
 - Before changing code, read [CONTRIBUTING.md](CONTRIBUTING.md) for module ownership, naming, testing and logging conventions.
 - For cross-layer changes, read [docs/architecture.md](docs/architecture.md). For Google integration, also read [docs/google.md](docs/google.md).

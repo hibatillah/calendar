@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useCalendarTheme, type CalendarTheme } from "./use-calendar-theme";
 import {
   CalendarDays,
   ChevronDown,
@@ -67,6 +68,7 @@ const storage: SnapshotStorage = {
 };
 const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export function CalendarApp() {
+  const { theme, selectTheme } = useCalendarTheme();
   const [today, setToday] = useState(dateKey);
   const [selectedDate, setSelectedDate] = useState(today);
   const [firstDay, setFirstDay] = useState(() => startOfWeek(today));
@@ -300,7 +302,7 @@ export function CalendarApp() {
   const renderMonthPicker = () => (
     <>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-neutral-400">
+        <span className="text-xs text-muted-foreground">
           {monthLabel(selectedDate)}
         </span>
         <div className="flex">
@@ -326,7 +328,7 @@ export function CalendarApp() {
         {Array.from({ length: 7 }, (_, index) => (
           <span
             key={index}
-            className="text-center text-[11px] text-neutral-500 py-2"
+            className="text-center text-[11px] text-muted-foreground py-2"
           >
             {weekdayNames[(index + weekStart) % 7]}
           </span>
@@ -354,7 +356,7 @@ export function CalendarApp() {
         <aside className="sidebar">
           <div className="flex items-center justify-between">
             <div className="flex gap-1">
-              <ChevronDown size={18} className="mt-2 text-neutral-400" />
+              <ChevronDown size={18} className="mt-2 text-muted-foreground" />
               <Button
                 variant="ghost"
                 size="icon"
@@ -378,7 +380,7 @@ export function CalendarApp() {
             {accounts.map((account) => (
               <section key={account.id}>
                 <p
-                  className="text-xs text-neutral-500 mb-2 truncate"
+                  className="text-xs text-muted-foreground mb-2 truncate"
                   title={account.email}
                 >
                   {account.email}
@@ -386,7 +388,7 @@ export function CalendarApp() {
                 {account.calendars.map((item) => (
                   <button
                     key={item.id}
-                    className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-neutral-700/30"
+                    className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-secondary/30"
                     onClick={() =>
                       setHiddenCalendars((previous) => {
                         const next = new Set(previous);
@@ -413,7 +415,7 @@ export function CalendarApp() {
               </section>
             ))}
             {!accounts.length && (
-              <div className="text-neutral-500 leading-6 px-2">
+              <div className="text-muted-foreground leading-6 px-2">
                 Your calendars will appear here.
                 <Button
                   variant="ghost"
@@ -431,7 +433,7 @@ export function CalendarApp() {
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
-                className="justify-start text-neutral-400"
+                className="justify-start text-muted-foreground"
               >
                 <CircleHelp size={17} />
                 Activity
@@ -446,13 +448,13 @@ export function CalendarApp() {
                 activity.map((entry, index) => (
                   <p
                     key={index}
-                    className="text-xs text-neutral-400 py-2 border-b"
+                    className="text-xs text-muted-foreground py-2 border-b"
                   >
                     {entry}
                   </p>
                 ))
               ) : (
-                <p className="text-neutral-400 text-xs">
+                <p className="text-muted-foreground text-xs">
                   No activity this session.
                 </p>
               )}
@@ -477,7 +479,7 @@ export function CalendarApp() {
               <DropdownMenuTrigger asChild>
                 <button
                   aria-label="Account menu"
-                  className="relative rounded-full w-8 h-8 bg-neutral-700 overflow-hidden flex items-center justify-center"
+                  className="relative rounded-full w-8 h-8 bg-secondary overflow-hidden flex items-center justify-center"
                 >
                   <CalendarDays size={18} />
                   {accounts[0]?.picture && (
@@ -496,7 +498,7 @@ export function CalendarApp() {
               <DropdownMenuContent align="start" className="w-64">
                 <div className="px-2 py-3">
                   <strong>{accounts[0]?.name || "Calendar"}</strong>
-                  <p className="text-xs text-neutral-400 truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {accounts[0]?.email || "Local preview"}
                   </p>
                 </div>
@@ -566,10 +568,10 @@ export function CalendarApp() {
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem onSelect={() => setView("week")}>
-                  Week <span className="ml-auto text-neutral-500">W</span>
+                  Week <span className="ml-auto text-muted-foreground">W</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setView("month")}>
-                  Month <span className="ml-auto text-neutral-500">M</span>
+                  Month <span className="ml-auto text-muted-foreground">M</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -610,11 +612,13 @@ export function CalendarApp() {
           </div>
         )}
         {calendar.isPending && (
-          <p className="px-6 text-xs text-neutral-500">Loading calendars…</p>
+          <p className="px-6 text-xs text-muted-foreground">
+            Loading calendars…
+          </p>
         )}
         {view === "month" ? (
           <>
-            <div className="grid grid-cols-7 text-center text-neutral-500 pb-3">
+            <div className="grid grid-cols-7 text-center text-muted-foreground pb-3">
               {Array.from({ length: 7 }, (_, index) => (
                 <span key={index}>{weekdayNames[(index + weekStart) % 7]}</span>
               ))}
@@ -651,7 +655,7 @@ export function CalendarApp() {
                       style={{ borderColor: eventColor(event.color) }}
                     >
                       {!event.allDay && (
-                        <span className="text-neutral-400 mr-1">
+                        <span className="text-muted-foreground mr-1">
                           {clockTime(event.start)}
                         </span>
                       )}
@@ -666,7 +670,7 @@ export function CalendarApp() {
           <div className="week-scroller" ref={scroller}>
             <div className="week-canvas">
               <div className="week-heading">
-                <div className="text-[10px] text-neutral-500 pt-3 pl-3">
+                <div className="text-[10px] text-muted-foreground pt-3 pl-3">
                   GMT+7
                 </div>
                 {visibleDates.map((date) => (
@@ -677,7 +681,7 @@ export function CalendarApp() {
                     </span>
                   </div>
                 ))}
-                <div className="all-day text-[10px] text-neutral-500 pl-3 pt-2">
+                <div className="all-day text-[10px] text-muted-foreground pl-3 pt-2">
                   All-day
                 </div>
                 {visibleDates.map((date) => (
@@ -785,7 +789,7 @@ export function CalendarApp() {
                           left: `${placement.left}%`,
                           width: `calc(${placement.width}% - 5px)`,
                           borderColor: eventColor(placement.event.color),
-                          background: `color-mix(in srgb, ${eventColor(placement.event.color)} 32%, #242424)`,
+                          background: `color-mix(in srgb, ${eventColor(placement.event.color)} 24%, var(--calendar-surface))`,
                         }}
                       >
                         <strong>{placement.event.title}</strong>
@@ -842,8 +846,8 @@ export function CalendarApp() {
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-[1000px] h-[min(720px,85vh)] p-0 gap-0 overflow-hidden">
           <div className="flex min-h-0">
-            <nav className="w-56 bg-neutral-900 p-5 space-y-2">
-              <p className="text-xs text-neutral-500 mb-5">Account</p>
+            <nav className="w-56 bg-secondary p-5 space-y-2">
+              <p className="text-xs text-muted-foreground mb-5">Account</p>
               <Button
                 variant={settingsTab === "general" ? "secondary" : "ghost"}
                 className="w-full justify-start"
@@ -875,6 +879,21 @@ export function CalendarApp() {
               {settingsTab === "general" ? (
                 <div className="space-y-8 mt-8">
                   <label className="max-w-60">
+                    Appearance
+                    <select
+                      aria-label="Appearance"
+                      value={theme}
+                      onChange={(event) => {
+                        selectTheme(event.target.value as CalendarTheme);
+                        log("Appearance changed");
+                      }}
+                    >
+                      <option value="system">System</option>
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                    </select>
+                  </label>
+                  <label className="max-w-60">
                     Start week on
                     <select
                       value={weekStart}
@@ -892,10 +911,10 @@ export function CalendarApp() {
                       <option value="0">Sunday</option>
                     </select>
                   </label>
-                  <p className="text-neutral-500">
+                  <p className="text-muted-foreground">
                     Time zone: Asia/Jakarta (GMT+7)
                   </p>
-                  <p className="text-neutral-500">
+                  <p className="text-muted-foreground">
                     Shortcuts: W — week · M — month · T — today
                   </p>
                   <Button
@@ -913,10 +932,10 @@ export function CalendarApp() {
                   {accounts.map((account) => (
                     <div key={account.id} className="rounded-lg border p-4">
                       <strong>{account.name}</strong>
-                      <p className="text-neutral-500 text-xs mt-1">
+                      <p className="text-muted-foreground text-xs mt-1">
                         {account.email}
                       </p>
-                      <p className="text-xs text-neutral-400 mt-3">
+                      <p className="text-xs text-muted-foreground mt-3">
                         {account.message}
                       </p>
                       <div className="flex gap-2 mt-3">
@@ -947,7 +966,7 @@ export function CalendarApp() {
                     <Plus size={16} />
                     Add Google account
                   </Button>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-muted-foreground">
                     {calendar.data?.googleConnection.message}
                   </p>
                 </div>
@@ -1088,7 +1107,7 @@ function EventEditor({
         </label>
       </fieldset>
       {error && <p role="alert">{error}</p>}
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-muted-foreground">
         Times in Asia/Jakarta. Recurring edits affect this occurrence.
       </p>
       {!draft.readOnly && (

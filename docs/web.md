@@ -1,6 +1,6 @@
 # Web development
 
-Use Bun 1.4.3 and Node 24 LTS. Run `bun install --frozen-lockfile`, start the Rust backend with `./scripts/start.ps1` (or the GPUI watcher), then run `bun run dev:web`. Open http://127.0.0.1:3000. Vite provides Fast Refresh. The production bundle is built with `bun run build`.
+Use Bun 1.4.3 and Node 24 LTS. Run `bun install --frozen-lockfile`, start the Rust backend with `./scripts/start.ps1` (or the GPUI watcher), then run `bun run dev:web`. Open http://127.0.0.1:3000 for the landing page or http://127.0.0.1:3000/app for the calendar. Vite provides Fast Refresh. The production bundle is built with `bun run build`.
 
 ## Local connection
 
@@ -21,3 +21,5 @@ Writes are optimistic and serialized in each client. Background refresh is pause
 - `packages/design-tokens`: platform-neutral colors and font name. Web uses shadcn/Radix primitives and Tailwind; native clients own their UI.
 
 Run `bun run typecheck`, `bun run test`, `bun run test:web`, and `bun run build`. Install Chromium once with `bunx playwright install chromium`. Browser tests intercept GraphQL; they must never create events in the real Google account. Native appearance is separate from these web checks.
+
+Appearance in General settings supports Light, Dark, and System, follows operating-system changes, and persists in this browser. Calendar surfaces and portal menus/dialogs share theme tokens. The landing hero uses the light palette; native desktop and mobile themes are not changed by the web setting.

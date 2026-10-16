@@ -179,6 +179,7 @@ function ProductPreview() {
   return (
     <div
       className="product-preview"
+      data-theme="light"
       aria-label="Interactive Calendar product preview with example events"
     >
       <aside className="preview-sidebar">
@@ -279,6 +280,7 @@ function ProductPreview() {
                     </PopoverTrigger>
                     <PopoverContent
                       className="preview-event-details"
+                      data-theme="light"
                       side="top"
                     >
                       <span className="demo-label">EXAMPLE EVENT</span>
@@ -332,6 +334,7 @@ function PhonePreview() {
   return (
     <div
       className="phone-preview"
+      data-theme="light"
       aria-label="Calendar mobile example: month above a daily agenda"
     >
       <div className="phone-status">
@@ -630,7 +633,11 @@ export function LandingPage() {
         </div>
       </section>
       <section className="tray-feature">
-        <div className="tray-preview" aria-label="Example upcoming schedule">
+        <div
+          className="tray-preview"
+          data-theme="light"
+          aria-label="Example upcoming schedule"
+        >
           <div className="tray-system-bar">
             <span>Wednesday, October 14</span>
             <CalendarDays size={16} />

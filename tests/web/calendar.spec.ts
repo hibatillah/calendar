@@ -63,3 +63,23 @@ test('optimistic move stays at the target until a failed save rolls it back', as
   await expect(targetColumn.getByText('Movable fixture')).toHaveCount(0);
   await expect(page.getByRole('status')).toContainText('Simulated conflict');
 });
+
+test('appearance persists and System follows OS changes, including portals', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.getByRole('button', { name: 'Account menu' }).click();
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  await page.getByLabel('Appearance', { exact: true }).selectOption('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByLabel('Appearance', { exact: true }).selectOption('light');
+  await expect(page.getByRole('dialog')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'Account menu' }).click();
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  await expect(page.getByLabel('Appearance', { exact: true })).toHaveValue('light');
+  await page.getByLabel('Appearance', { exact: true }).selectOption('system');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+});

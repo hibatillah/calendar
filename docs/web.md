@@ -21,3 +21,5 @@ Writes are optimistic and serialized in each client. Background refresh is pause
 - `packages/design-tokens`: platform-neutral colors and font name. Web uses shadcn/Radix primitives and Tailwind; native clients own their UI.
 
 Run `bun run typecheck`, `bun run test`, `bun run test:web`, and `bun run build`. Install Chromium once with `bunx playwright install chromium`. Browser tests intercept GraphQL; they must never create events in the real Google account. Native appearance is separate from these web checks.
+
+Appearance in General settings supports Light, Dark, and System, follows operating-system changes, and persists in this browser. Calendar surfaces and portal menus/dialogs share theme tokens. The landing hero uses the light palette; native desktop and mobile themes are not changed by the web setting.

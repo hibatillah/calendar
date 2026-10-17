@@ -1,7 +1,7 @@
+import { clockTime, dateKey, DISPLAY_ZONE, localInstant } from "@calendar/calendar";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { clockTime, dateKey, DISPLAY_ZONE, localInstant } from "@calendar/calendar";
 import type { DateFieldProps } from "./date-field";
 
 export function DateField({

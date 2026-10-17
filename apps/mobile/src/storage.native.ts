@@ -1,5 +1,5 @@
-import { openDatabaseAsync } from "expo-sqlite";
 import type { SnapshotStorage } from "@calendar/api/react";
+import { openDatabaseAsync } from "expo-sqlite";
 
 const database = openDatabaseAsync("calendar-preview.db").then(async (database) => {
   await database.execAsync(

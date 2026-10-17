@@ -1,11 +1,11 @@
-import { Platform } from "react-native";
+import type { CalendarEvent } from "@calendar/calendar";
 import * as Notifications from "expo-notifications";
 import {
   AndroidImportance,
   AndroidNotificationVisibility,
   IosAuthorizationStatus,
 } from "expo-notifications";
-import type { CalendarEvent } from "@calendar/calendar";
+import { Platform } from "react-native";
 import { reminderPlan } from "./reminder-plan";
 
 Notifications.setNotificationHandler({

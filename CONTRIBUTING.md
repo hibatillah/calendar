@@ -8,9 +8,9 @@ After the initial repository bootstrap, make every change on a feature branch an
 
 - `crates/calendar-core`: domain types, validation and time rules. No GUI, HTTP or database dependency.
 - `crates/calendar-layout`: pure event placement and overlapping-column calculation.
-- `apps/desktop/src/app.rs`: presentation, editor and gestures.
+- `apps/desktop/src/app.rs`: state and lifecycle; `apps/desktop/src/app/`: views, editor, gestures and controls.
 - `apps/desktop/src/platform.rs`: native backdrop/tray placement. Keep Windows imports behind target gates.
-- `apps/desktop/src/service.rs`: background GraphQL calls, cache and operation journal.
+- `apps/desktop/src/service.rs`: background GraphQL calls, cache and operation journal. See the module map in `docs/architecture.md` for web/mobile controllers and Google provider modules.
 - `apps/backend/src/repository.rs`: storage transactions and conflict/idempotency rules.
 - `crates/telemetry`: local diagnostics, PostHog events/errors and OpenTelemetry log/trace export.
 

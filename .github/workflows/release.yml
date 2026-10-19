@@ -1,0 +1,73 @@
+name: Release
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  desktop:
+    uses: ./.github/workflows/ci.yml
+  mobile:
+    uses: ./.github/workflows/mobile.yml
+  web:
+    uses: ./.github/workflows/web.yml
+  publish:
+    needs: [desktop, mobile, web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: calendar-windows-x64-${{ github.sha }}
+          path: release-assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: calendar-android-preview-${{ github.sha }}
+          path: android-artifact
+      - uses: actions/download-artifact@v4
+        with:
+          name: calendar-ios-simulator-${{ github.sha }}
+          path: release-assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: calendar-web-${{ github.sha }}
+          path: web-artifact
+      - name: Prepare downloads and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t android_packages < <(find android-artifact -type f -name '*.apk')
+          test "${#android_packages[@]}" -eq 1
+          cp "${android_packages[0]}" release-assets/calendar-android-preview.apk
+          tar -czf release-assets/calendar-web-build.tar.gz -C web-artifact .
+          cd release-assets
+          test -s calendar-windows-x64.zip
+          test -s calendar-android-preview.apk
+          test -s calendar-ios-simulator.tar.gz
+          test -s calendar-web-build.tar.gz
+          sha256sum calendar-* > SHA256SUMS.txt
+      - name: Publish complete preview release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: preview-${{ github.run_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > release-state.txt 2>/dev/null; then
+            if [ "$(cat release-state.txt)" = "false" ]; then
+              echo "Release already published; leaving assets unchanged."
+              exit 0
+            fi
+          else
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --draft --prerelease \
+              --title "Calendar preview ${GITHUB_RUN_NUMBER}" --generate-notes \
+              --notes "Development preview. Windows is unsigned; Android uses the preview signing configuration. Both need local Google/backend setup. The iOS archive runs only in an Xcode simulator, not on an iPhone. The web archive is a developer build, not a desktop installer. See CONTRIBUTING.md for setup."
+          fi
+          gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease

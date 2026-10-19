@@ -14,7 +14,7 @@ foreach ($binary in @('calendar-desktop.exe', 'calendar-backend.exe')) {
 }
 
 Copy-Item -LiteralPath 'scripts/run-portable.ps1' -Destination (Join-Path $packageDirectory 'Run-Calendar.ps1')
-Copy-Item -LiteralPath '.env.example','LICENSE','README.md' -Destination $packageDirectory
+Copy-Item -LiteralPath '.env.example','LICENSE','README.md','CONTRIBUTING.md' -Destination $packageDirectory
 Copy-Item -LiteralPath 'docs' -Destination $packageDirectory -Recurse
 
 $licenseDirectory = Join-Path $packageDirectory 'third-party-licenses'

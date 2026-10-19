@@ -1,14 +1,13 @@
 name: Mobile
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: mobile-${{ github.ref }}
-  cancel-in-progress: true
+  group: mobile-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   checks:
     name: Mobile checks
@@ -27,12 +26,12 @@ jobs:
       - run: bun run typecheck
       - run: bun run test
       - run: bun run --cwd apps/mobile export
-        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
       - run: bunx playwright install --with-deps chromium
       - run: bun run test:mobile
   android:
     name: Android preview APK
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -64,9 +63,10 @@ jobs:
           path: apps/mobile/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
   ios:
     name: iOS simulator build
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: checks
     runs-on: macos-latest
     timeout-minutes: 60
@@ -91,3 +91,4 @@ jobs:
           path: apps/mobile/ios/calendar-ios-simulator.tar.gz
           if-no-files-found: error
           retention-days: 14
+          overwrite: true

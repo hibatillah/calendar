@@ -2,16 +2,15 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   rust-checks:
@@ -37,7 +36,7 @@ jobs:
 
   windows-desktop:
     name: Windows portable build
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: rust-checks
     runs-on: windows-latest
     timeout-minutes: 90
@@ -61,3 +60,4 @@ jobs:
           path: dist/calendar-windows-x64.zip
           if-no-files-found: error
           retention-days: 14
+          overwrite: true

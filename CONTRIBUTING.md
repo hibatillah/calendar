@@ -115,11 +115,11 @@ GPUI tests run against a test window, without operating your desktop. Native app
 
 ## Downloads and CI
 
-GitHub Actions runs regular checks on every pull request, pushes to `main`, and manual workflow runs. Release/preview builds run only on pull requests targeting `main`, after the required checks pass. The Windows release build is uploaded as the `calendar-windows-x64-<commit>` artifact for 14 days. Download it from the workflow run and extract both ZIP layers if GitHub wraps the portable ZIP.
+GitHub Actions runs regular checks on every pull request and manual check-workflow run. PRs targeting `main` also build the applications. After a merge to `main`, the Release workflow calls the same check/build workflows for the exact merged commit and publishes only when all succeed. The Windows release build is uploaded as the `calendar-windows-x64-<commit>` artifact for 14 days. Download it from the workflow run and extract both ZIP layers if GitHub wraps the portable ZIP.
 
 The portable package contains both executables. Copy `.env.example` to `.env`, configure your own Desktop OAuth credentials as described in [Google setup](docs/google.md), and run `Run-Calendar.ps1` with PowerShell. Keep the package in a writable folder. It requires neither Rust nor Visual Studio; the local backend remains on port 47821. These are unsigned preview builds, not signed installers. No account credentials, telemetry token or local calendar cache is packaged.
 
-After the bootstrap commit, changes go through feature branches and PRs with passing CI. Regular checks cover formatting, Rust/GPUI tests, Clippy, generated GraphQL contracts, TypeScript, linting, shared date tests, and web/mobile browser interactions. PRs into feature branches skip application packaging. Only PRs into `main` also build the web production output, export mobile bundles, and package Windows executables, Android preview APKs, and unsigned iOS simulator archives. Test-related compilation still runs wherever the tests require it.
+After the bootstrap commit, changes go through feature branches and PRs with passing CI. Regular checks cover formatting, Rust/GPUI tests, Clippy, generated GraphQL contracts, TypeScript, linting, shared date tests, and web/mobile browser interactions. PRs into feature branches skip application packaging. PRs into `main` and post-merge release runs build the web production output, export mobile bundles, and package Windows executables, Android preview APKs, and unsigned iOS simulator archives. Test-related compilation still runs wherever the tests require it.
 
 ## GraphQL documentation
 
@@ -145,3 +145,23 @@ The backend exports the documented schema to `contracts/graphql/schema.graphql` 
 `AGENTS.md` routes Codex to the relevant `.codex/rules/` documents. `.codex/agents/` contains TOML definitions for the two review roles, following the [official custom agent format](https://developers.openai.com/codex/subagents). Rules are read through explicit references; a `.codex/rules/` directory alone is not an automatic instruction loader. The reviewers inherit the session model and permissions and are instructed to inspect and report only. Their instructions are not a security sandbox.
 
 Claude rule and agent equivalents remain in `.claude/`. Keep matching guidance aligned. The former root `CLAUDE.md` is now `AGENTS.md`; Claude users should load `AGENTS.md` explicitly when their client does not discover it.
+
+## Automatic preview releases
+
+Every push to `main` runs `.github/workflows/release.yml`. Keep main protected and merge through PRs. The workflow reuses CI, Mobile, and Web checks/builds at the merged commit; it never promotes artifacts from an untrusted PR. Feature-branch PRs still skip packaging. Main builds use a commit-specific concurrency group so a later merge does not cancel an earlier release.
+
+After every required job succeeds, publishing creates a draft GitHub Release, attaches all files plus `SHA256SUMS.txt`, and publishes it as a prerelease. Tags are `preview-<Release workflow run number>`, an increasing build identifier rather than a semantic version. Re-running the same run uses the same tag: unfinished drafts can be completed, while published assets stay unchanged. Use **Re-run failed jobs** to recover a failed run. No PAT or Changesets service is required; only the publishing job receives `contents: write` via `GITHUB_TOKEN`.
+
+Release notes use GitHub's generated PR notes and `.github/release.yml` categories, following the approach in [Acure PR 153](https://github.com/encurehq/acure/pull/153). Unlike Acure, every successful main push gets a preview rather than requiring a release/version branch. Use merge commits for promotion branches if you want individual included PRs to remain visible in generated notes.
+
+| Asset                           | Purpose                                                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `calendar-windows-x64.zip`      | Unsigned portable desktop and backend, launch script, setup docs, and license files             |
+| `calendar-android-preview.apk`  | Android developer preview using the generated project's preview signing configuration           |
+| `calendar-ios-simulator.tar.gz` | Unsigned Xcode simulator app; not installable on a physical iPhone                              |
+| `calendar-web-build.tar.gz`     | Web client/server build output for developers; not a standalone installer or a deployed website |
+| `SHA256SUMS.txt`                | Checksums of the four build files                                                               |
+
+The `/download` page and landing download section request the public Releases API, include prereleases, and select the highest published `preview-N` number so an older slow build cannot replace a newer build on the website. Successful lookups are cached in the browser session for five minutes. Only uploaded, nonempty assets with the expected repository URL get download links. Empty releases and API failures show an honest unavailable state with a GitHub Releases fallback. No token is shipped to the browser. Downloads themselves are public release files and do not depend on expiring Actions artifacts.
+
+macOS binaries and physical-iOS distribution are not shipped yet. Publicly signed Windows/macOS packages, a stable private Android signing key, and iOS distribution through TestFlight/App Store require separate release setup. These previews still require local backend/Google configuration. The first actual publication can only be verified after this workflow reaches main.

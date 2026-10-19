@@ -5,16 +5,17 @@ import {
   CalendarDays,
   Check,
   Download,
-  Laptop,
   Menu,
   Plus,
-  Smartphone,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import "../landing.css";
 import { PhonePreview, ProductPreview, useInteractiveReady } from "./product-previews";
 import { Button } from "./ui/button";
+
+export { DownloadSection } from "./download-section";
+import { DownloadSection } from "./download-section";
 
 const repository = "https://github.com/hibatillah/calendar";
 
@@ -60,61 +61,6 @@ export function MarketingNav() {
         </button>
       </div>
     </header>
-  );
-}
-
-export function DownloadSection() {
-  return (
-    <section className="download-section" id="download">
-      <span className="section-eyebrow">A PLACE FOR EVERY DAY</span>
-      <h2>Make yourself some room.</h2>
-      <p>Calendar is in preview. Pick your platform and follow along.</p>
-      <div className="platform-grid">
-        <article>
-          <Laptop />
-          <h3>Windows</h3>
-          <span className="platform-status available">Developer preview</span>
-          <p>
-            Native desktop app. Current builds require a local backend and Google setup.
-          </p>
-          <Button asChild className="marketing-button">
-            <a href={`${repository}/actions/workflows/ci.yml`}>
-              View preview builds <ArrowUpRight />
-            </a>
-          </Button>
-        </article>
-        <article>
-          <Laptop />
-          <h3>macOS</h3>
-          <span className="platform-status">In development</span>
-          <p>A native desktop experience with your upcoming day in the menu bar.</p>
-          <span className="unavailable-download">No public download yet</span>
-        </article>
-        <article>
-          <Smartphone />
-          <h3>Android</h3>
-          <span className="platform-status">In development</span>
-          <p>A month at a glance, with a simple agenda for the day you choose.</p>
-          <a className="platform-text-link" href={`${repository}/pull/3`}>
-            Follow mobile progress <ArrowUpRight size={14} />
-          </a>
-        </article>
-        <article>
-          <Smartphone />
-          <h3>iOS</h3>
-          <span className="platform-status">In development</span>
-          <p>
-            Native date and time controls. TestFlight access will come after device
-            testing.
-          </p>
-          <span className="unavailable-download">TestFlight not available yet</span>
-        </article>
-      </div>
-      <p className="download-note">
-        Preview artifacts may require a GitHub account and expire. Signed public
-        installers will appear here when ready.
-      </p>
-    </section>
   );
 }
 

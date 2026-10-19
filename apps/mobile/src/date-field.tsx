@@ -1,5 +1,5 @@
-import { TextInput } from "react-native";
 import { localInstant } from "@calendar/calendar";
+import { TextInput } from "react-native";
 
 export type DateFieldProps = {
   label: string;

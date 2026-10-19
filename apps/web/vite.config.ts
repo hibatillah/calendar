@@ -19,6 +19,7 @@ export default defineConfig({
             request.headers.host !== "127.0.0.1:3000"
           ) {
             response.writeHead(403).end();
+
             return;
           }
 
@@ -31,6 +32,7 @@ export default defineConfig({
 
               if (length > 1_000_000) {
                 response.writeHead(413).end();
+
                 return;
               }
 

@@ -39,3 +39,15 @@ Desktop currently uses Chrono + chrono-tz rather than the initial Jiff candidate
 Implemented: desktop OAuth with PKCE/state, per-account OS credential storage, calendar discovery, paginated event reads with recurring-instance expansion, and account/month-specific offline caches. The desktop refreshes a 56-day range every 30 seconds while idle and requests a new range when the displayed month changes. Calendar roles and OAuth permissions control editability. Creates use stable IDs and updates use ETags; operation markers reconcile retries. Account-prefixed identifiers keep shared calendars separate. Legacy preview rows and caches are removed on startup.
 
 Still required: incremental sync and invalidation recovery, series-wide recurring edits, attendee management, configurable display zones and hosted multi-user isolation. All-day provider dates map to midnight in the fixed Asia/Jakarta display zone with exclusive end dates preserved. Public multi-user web/mobile hosting remains deferred; the web development bridge reuses this local backend.
+
+## UI module map
+
+Desktop `app.rs` owns state and lifecycle; `app/shell.rs` composes the window. `app/navigation.rs`, `gestures.rs`, `editor.rs`, `timeline.rs`, `sidebar.rs`, `settings.rs` and `agenda.rs` own their corresponding interactions and rendering. Shared element builders live in `controls.rs`; headless interaction tests are in `app/tests.rs`.
+
+Web `use-calendar-controller.ts` owns query state and actions. `calendar-app.tsx` composes `calendar-sidebar`, `mini-calendar`, `week-calendar`, `month-calendar`, `calendar-settings` and `event-editor`. Browser snapshot storage has a separate module. Marketing illustrations and their styles live in `product-previews.tsx` and `product-previews.css`, separate from page content.
+
+Mobile `use-mobile-calendar.ts` owns connection, query, preference and reminder state. `calendar-screen.tsx` composes the month, agenda and sheets; `mobile-month`, `mobile-settings` and `mobile-editor` own their views. `components.tsx` contains shared native controls. Platform-specific persistence, native date fields and notification adapters retain their existing `.native.ts` resolution.
+
+Backend `google.rs` owns shared provider state and discovery; `google/authorization.rs`, `credentials.rs`, `events.rs` and `mapping.rs` separate authorization, OS vault access, provider writes/reads and normalization. Provider tests remain isolated with fake HTTP endpoints. Telemetry configuration and telemetry tests are separated from logging/export initialization.
+
+The refactor preserves API schema, event identities, OAuth scopes, storage keys, migration behavior, optimistic write/rollback behavior and notification scheduling. Small domain and storage modules remain cohesive rather than being split just to reduce line counts.

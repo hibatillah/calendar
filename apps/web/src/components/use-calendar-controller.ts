@@ -17,7 +17,7 @@ import {
   type WeekStart,
 } from "@calendar/calendar";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { storage } from "./snapshot-storage";
 import { useCalendarTheme } from "./use-calendar-theme";
 
@@ -78,6 +78,7 @@ export function useCalendarController() {
     if (saved === "0" || saved === "1") {
       const start = Number(saved) as WeekStart;
 
+      // oxlint-disable-next-line react/set-state-in-effect -- Restore browser preferences after SSR hydration.
       setWeekStart(start);
       setFirstDay(startOfWeek(dateKey(), start));
     }
@@ -87,12 +88,12 @@ export function useCalendarController() {
     return () => clearInterval(interval);
   }, []);
 
-  const goToday = () => {
+  const goToday = useCallback(() => {
     const current = dateKey();
 
     setSelectedDate(current);
     setFirstDay(startOfWeek(current, weekStart));
-  };
+  }, [weekStart]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -118,7 +119,7 @@ export function useCalendarController() {
     window.addEventListener("keydown", handleKey);
 
     return () => window.removeEventListener("keydown", handleKey);
-  }, [weekStart, draft, settingsOpen]);
+  }, [goToday, draft, settingsOpen]);
   useEffect(() => {
     const element = timelineScrollRef.current;
 

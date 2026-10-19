@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { addDays } from "@calendar/calendar";
 import {
   CalendarSnapshotDocument,
@@ -42,7 +42,7 @@ export function useCalendar(
   const queryClient = useQueryClient();
   const pendingWrites = useIsMutating({ mutationKey: ["calendar-save"] });
   const endDate = addDays(firstDay, 42);
-  const queryKey = ["calendar", firstDay, endDate];
+  const queryKey = useMemo(() => ["calendar", firstDay, endDate], [firstDay, endDate]);
   const storageKey = `${firstDay}:${endDate}`;
   const query = useQuery({
     enabled: enabled && pendingWrites === 0,
@@ -69,7 +69,7 @@ export function useCalendar(
     return () => {
       active = false;
     };
-  }, [storageKey, storage, queryClient, enabled]);
+  }, [storageKey, storage, queryClient, queryKey, enabled]);
   useEffect(() => {
     if (enabled && query.data && !query.isError && pendingWrites === 0)
       storage.write(storageKey, query.data).catch(() => {});

@@ -12,10 +12,15 @@ serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
 uuid.workspace = true
-posthog-rs = { version = "0.26", default-features = false, features = ["error-tracking"] }
+posthog-rs = { version = "0.26", default-features = false, features = [
+  "error-tracking",
+] }
 opentelemetry = "0.32"
 opentelemetry_sdk = "0.32"
-opentelemetry-otlp = { version = "0.32", features = ["reqwest-blocking-client", "reqwest-rustls"] }
+opentelemetry-otlp = { version = "0.32", features = [
+  "reqwest-blocking-client",
+  "reqwest-rustls",
+] }
 tracing-opentelemetry = "0.33"
 
 

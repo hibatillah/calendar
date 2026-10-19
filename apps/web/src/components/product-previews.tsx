@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 export function useInteractiveReady() {
   const [ready, setReady] = useState(false);
 
+  // oxlint-disable-next-line react/set-state-in-effect -- Enable interactive previews only after hydration.
   useEffect(() => setReady(true), []);
 
   return ready;

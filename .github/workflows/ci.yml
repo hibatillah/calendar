@@ -37,6 +37,7 @@ jobs:
 
   windows-desktop:
     name: Windows portable build
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
     needs: rust-checks
     runs-on: windows-latest
     timeout-minutes: 90

@@ -50,11 +50,11 @@ Scroll sideways with a trackpad, horizontal wheel, or **Shift + mouse wheel** to
 
 ## Downloads and CI
 
-GitHub Actions runs formatting, Rust/GPUI tests and Clippy on pull requests and pushes to `main`. A successful check job enables a Windows release build, uploaded as the `calendar-windows-x64-<commit>` artifact for 14 days. Download it from the workflow run and extract both ZIP layers if GitHub wraps the portable ZIP.
+GitHub Actions runs regular checks on every pull request, pushes to `main`, and manual workflow runs. Release/preview builds run only on pull requests targeting `main`, after the required checks pass. The Windows release build is uploaded as the `calendar-windows-x64-<commit>` artifact for 14 days. Download it from the workflow run and extract both ZIP layers if GitHub wraps the portable ZIP.
 
 The portable package contains both executables. Copy `.env.example` to `.env`, configure your own Desktop OAuth credentials as described in [Google setup](docs/google.md), and run `Run-Calendar.ps1` with PowerShell. Keep the package in a writable folder. It requires neither Rust nor Visual Studio; the local backend remains on port 47821. These are unsigned preview builds, not signed installers. No account credentials, telemetry token or local calendar cache is packaged.
 
-After the bootstrap commit, changes go through feature branches and PRs with passing CI. The web workflow checks generated GraphQL contracts, TypeScript, shared date tests, browser interactions and the production build. Mobile CI exports Android/iOS bundles, tests the web-rendered mobile UI, and builds Android preview APKs and unsigned iOS simulator archives.
+After the bootstrap commit, changes go through feature branches and PRs with passing CI. Regular checks cover formatting, Rust/GPUI tests, Clippy, generated GraphQL contracts, TypeScript, linting, shared date tests, and web/mobile browser interactions. PRs into feature branches skip application packaging. Only PRs into `main` also build the web production output, export mobile bundles, and package Windows executables, Android preview APKs, and unsigned iOS simulator archives. Test-related compilation still runs wherever the tests require it.
 
 ## License
 

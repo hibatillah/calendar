@@ -27,11 +27,13 @@ jobs:
       - run: bun run codegen
       - run: git diff --exit-code -- packages/api/src/generated.ts
       - run: bun run build
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
       - run: bun run typecheck
       - run: bun run test
       - run: bunx playwright install --with-deps chromium
       - run: bun run test:web
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
         with:
           name: calendar-web-${{ github.sha }}
           path: apps/web/dist/

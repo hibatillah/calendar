@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   checks:
-    name: Mobile bundles and checks
+    name: Mobile checks
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -27,10 +27,12 @@ jobs:
       - run: bun run typecheck
       - run: bun run test
       - run: bun run --cwd apps/mobile export
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
       - run: bunx playwright install --with-deps chromium
       - run: bun run test:mobile
   android:
     name: Android preview APK
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
     needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -64,6 +66,7 @@ jobs:
           retention-days: 14
   ios:
     name: iOS simulator build
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
     needs: checks
     runs-on: macos-latest
     timeout-minutes: 60

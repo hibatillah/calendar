@@ -118,6 +118,7 @@ mod tests {
                 .all(|placement| placement.column_count == 1)
         );
     }
+
     #[test]
     fn sliding_range_includes_partial_eighth_day_and_clips_overnight_events() {
         let first_date = NaiveDate::from_ymd_opt(2026, 12, 29).unwrap();

@@ -48,6 +48,7 @@ pub struct EventRecord {
     /// Whether edits are forbidden for this stored event.
     pub read_only: bool,
 }
+
 impl From<CalendarEvent> for EventRecord {
     fn from(event: CalendarEvent) -> Self {
         Self {
@@ -66,6 +67,7 @@ impl From<CalendarEvent> for EventRecord {
         }
     }
 }
+
 fn repository_error(error: RepositoryError) -> async_graphql::Error {
     let code = match &error {
         RepositoryError::Invalid(_) => "INVALID_EVENT",
@@ -79,6 +81,7 @@ fn repository_error(error: RepositoryError) -> async_graphql::Error {
     async_graphql::Error::new(error.to_string())
         .extend_with(|_, extensions| extensions.set("code", code))
 }
+
 fn invalid_input(message: &'static str) -> async_graphql::Error {
     async_graphql::Error::new(message)
         .extend_with(|_, extensions| extensions.set("code", "INVALID_EVENT"))
@@ -220,11 +223,13 @@ pub fn schema(repository: Repository) -> CalendarSchema {
         .limit_complexity(1000)
         .finish()
 }
+
 #[derive(Clone)]
 struct AppState {
     schema: CalendarSchema,
     token: String,
 }
+
 pub fn router(repository: Repository, token: String) -> Router {
     let state = AppState {
         schema: schema(repository),
@@ -293,6 +298,7 @@ pub fn router(repository: Repository, token: String) -> Router {
         )
         .with_state(state)
 }
+
 async fn authorize(State(state): State<AppState>, request: Request, next: Next) -> Response {
     let headers = request.headers();
     let origin_allowed = headers
@@ -315,9 +321,11 @@ async fn authorize(State(state): State<AppState>, request: Request, next: Next) 
     }
     next.run(request).instrument(span).await
 }
+
 async fn graphql(State(state): State<AppState>, request: GraphQLRequest) -> GraphQLResponse {
     state.schema.execute(request.into_inner()).await.into()
 }
+
 async fn diagnostics() -> Json<Vec<calendar_telemetry::LogEntry>> {
     Json(calendar_telemetry::recent_logs())
 }
@@ -333,6 +341,7 @@ mod tests {
             "test-token".into(),
         )
     }
+
     fn request(body: serde_json::Value) -> Request {
         Request::post("/graphql")
             .header("content-type", "application/json")
@@ -340,6 +349,7 @@ mod tests {
             .body(Body::from(body.to_string()))
             .unwrap()
     }
+
     async fn json(response: Response) -> serde_json::Value {
         serde_json::from_slice(
             &axum::body::to_bytes(response.into_body(), 2_000_000)
@@ -348,6 +358,7 @@ mod tests {
         )
         .unwrap()
     }
+
     #[tokio::test]
     async fn authentication_protects_queries_and_introspection() {
         let app = app().await;
@@ -391,6 +402,7 @@ mod tests {
             StatusCode::UNAUTHORIZED
         );
     }
+
     #[tokio::test]
     async fn schema_exposes_documentation_and_old_rest_is_removed() {
         let app = app().await;
@@ -431,6 +443,7 @@ mod tests {
             );
         }
     }
+
     #[tokio::test]
     async fn graphql_mutations_remain_idempotent_and_reject_stale_revisions() {
         let app = app().await;

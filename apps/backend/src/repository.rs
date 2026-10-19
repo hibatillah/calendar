@@ -29,6 +29,7 @@ impl Repository {
             CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);").execute(&pool).await?;
         Ok(Self { pool })
     }
+
     pub async fn remove_preview_data(&self) -> Result<(), sqlx::Error> {
         let mut transaction = self.pool.begin().await?;
         sqlx::query("DELETE FROM events WHERE json_extract(payload, '$.calendar_id') IN ('work', 'personal')").execute(&mut *transaction).await?;
@@ -38,6 +39,7 @@ impl Repository {
             .await?;
         transaction.commit().await
     }
+
     #[tracing::instrument(skip_all, name = "database.events")]
     pub async fn events(&self) -> Result<Vec<CalendarEvent>, RepositoryError> {
         let rows: Vec<String> = sqlx::query_scalar("SELECT payload FROM events")
@@ -51,6 +53,7 @@ impl Repository {
             })
             .collect()
     }
+
     #[tracing::instrument(skip_all, name = "database.save")]
     pub async fn save(&self, command: EventCommand) -> Result<CalendarEvent, RepositoryError> {
         command.event.validate().map_err(RepositoryError::Invalid)?;

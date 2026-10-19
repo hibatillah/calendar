@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "unicorn", "oxc"],
+  "categories": { "correctness": "error" },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn"
+  },
+  "ignorePatterns": [
+    "packages/api/src/generated.ts",
+    "apps/web/src/routeTree.gen.ts",
+    "apps/mobile/android/**",
+    "apps/mobile/ios/**",
+    "apps/mobile/*-env.d.ts",
+    "**/dist/**",
+    "**/build/**",
+    "assets/**",
+    "apps/*/assets/**",
+    "apps/web/public/**"
+  ]
+}

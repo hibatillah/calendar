@@ -17,6 +17,7 @@ struct DesktopState {
     popup: Option<WindowHandle<base::Root>>,
     view: Option<Entity<CalendarApp>>,
 }
+
 impl Global for DesktopState {}
 
 fn main() {

@@ -7,7 +7,10 @@ edition.workspace = true
 ui-tests = ["gpui-kit/test-support"]
 
 [dependencies]
-gpui-kit = { version = "=0.7.1", default-features = false, features = ["component", "assets"] }
+gpui-kit = { version = "=0.7.1", default-features = false, features = [
+  "component",
+  "assets",
+] }
 calendar-core.workspace = true
 calendar-layout.workspace = true
 calendar-telemetry.workspace = true
@@ -23,5 +26,10 @@ tokio.workspace = true
 tray-icon = "0.21"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_UI_HiDpi"] }
+windows = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_UI_HiDpi",
+] }
 

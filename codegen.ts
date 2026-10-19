@@ -1,4 +1,5 @@
 import type { CodegenConfig } from "@graphql-codegen/cli";
+
 const config: CodegenConfig = {
   schema: "contracts/graphql/schema.graphql",
   documents: "packages/api/src/operations.graphql",
@@ -8,4 +9,5 @@ const config: CodegenConfig = {
     },
   },
 };
+
 export default config;

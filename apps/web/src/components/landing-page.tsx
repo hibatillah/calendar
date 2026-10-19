@@ -1,97 +1,28 @@
-import { useEffect, useState } from "react";
 import {
   ArrowDown,
   ArrowRight,
   ArrowUpRight,
   CalendarDays,
   Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  CircleHelp,
   Download,
-  Laptop,
   Menu,
-  PanelLeft,
   Plus,
-  Search,
-  Smartphone,
-  SquarePen,
   X,
 } from "lucide-react";
-import { Button } from "./ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { useState } from "react";
 import "../landing.css";
+import { PhonePreview, ProductPreview, useInteractiveReady } from "./product-previews";
+import { Button } from "./ui/button";
+
+export { DownloadSection } from "./download-section";
+import { DownloadSection } from "./download-section";
 
 const repository = "https://github.com/hibatillah/calendar";
-const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-function useInteractiveReady() {
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
-  return ready;
-}
-const sampleEvents = [
-  {
-    title: "A little planning",
-    day: 0,
-    start: 9,
-    duration: 1,
-    color: "#7198bc",
-    time: "09:00 – 10:00",
-  },
-  {
-    title: "Make something good",
-    day: 1,
-    start: 10,
-    duration: 2,
-    color: "#d28b77",
-    time: "10:00 – 12:00",
-  },
-  {
-    title: "Coffee with Maya",
-    day: 2,
-    start: 9.5,
-    duration: 1,
-    color: "#bba16b",
-    time: "09:30 – 10:30",
-  },
-  {
-    title: "Room to focus",
-    day: 3,
-    start: 9,
-    duration: 2.5,
-    color: "#7b9f87",
-    time: "09:00 – 11:30",
-  },
-  {
-    title: "Design catch-up",
-    day: 4,
-    start: 10.5,
-    duration: 1,
-    color: "#7198bc",
-    time: "10:30 – 11:30",
-  },
-  {
-    title: "An afternoon outside",
-    day: 5,
-    start: 12,
-    duration: 2,
-    color: "#bba16b",
-    time: "12:00 – 14:00",
-  },
-  {
-    title: "Lunch, unhurried",
-    day: 2,
-    start: 12,
-    duration: 1,
-    color: "#d28b77",
-    time: "12:00 – 13:00",
-  },
-];
 
 export function MarketingNav() {
   const interactiveReady = useInteractiveReady();
   const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <header className="marketing-nav">
       <a href="/" className="calendar-wordmark" aria-label="Calendar home">
@@ -130,313 +61,6 @@ export function MarketingNav() {
         </button>
       </div>
     </header>
-  );
-}
-
-function MiniMonth({ mobile = false }: { mobile?: boolean }) {
-  return (
-    <div
-      className={
-        mobile ? "preview-mini-month mobile-month" : "preview-mini-month"
-      }
-      aria-hidden="true"
-    >
-      {weekdays.map((day) => (
-        <span key={day} className="preview-weekday">
-          {day.slice(0, 2)}
-        </span>
-      ))}
-      {Array.from({ length: 35 }, (_, index) => {
-        const date = index - 2;
-        return (
-          <span
-            key={index}
-            className={`${date < 1 || date > 31 ? "muted-date" : ""} ${date === 14 ? "preview-today" : ""} ${date >= 12 && date <= 18 ? "preview-selected-week" : ""}`}
-          >
-            <b>{date < 1 ? date + 30 : date > 31 ? date - 31 : date}</b>
-            {mobile && date > 0 && date < 32 && (
-              <i className="month-event-lines">
-                {Array.from({ length: date % 4 }, (_, eventIndex) => (
-                  <i
-                    key={eventIndex}
-                    style={{
-                      background: ["#cc8e7c", "#7da289", "#7f9cb7"][eventIndex],
-                    }}
-                  />
-                ))}
-              </i>
-            )}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-function ProductPreview() {
-  const interactiveReady = useInteractiveReady();
-  const [view, setView] = useState<"week" | "month">("week");
-  return (
-    <div
-      className="product-preview"
-      data-theme="light"
-      aria-label="Interactive Calendar product preview with example events"
-    >
-      <aside className="preview-sidebar">
-        <div className="preview-sidebar-tools">
-          <ChevronDown size={16} />
-          <PanelLeft size={16} />
-          <span />
-          <Search size={16} />
-          <SquarePen size={16} />
-        </div>
-        <div className="preview-mini-heading">
-          October 2026 <span>⌃ &nbsp;⌄</span>
-        </div>
-        <MiniMonth />
-        <p className="preview-account">alex@example.com</p>
-        {["Personal", "Work", "A little time outside"].map(
-          (calendar, index) => (
-            <div className="preview-calendar" key={calendar}>
-              <i
-                style={{ background: ["#d38b77", "#7198bc", "#7b9f87"][index] }}
-              />
-              {calendar}
-            </div>
-          ),
-        )}
-        <div className="preview-sidebar-bottom">
-          <CircleHelp size={15} /> A little room for your time.
-        </div>
-      </aside>
-      <div className="preview-main">
-        <div className="preview-toolbar">
-          <span className="preview-avatar">a</span>
-          <span />
-          <div
-            className="preview-view-switch"
-            aria-label="Preview calendar view"
-          >
-            <button
-              aria-pressed={view === "week"}
-              disabled={!interactiveReady}
-              onClick={() => setView("week")}
-            >
-              Week
-            </button>
-            <button
-              aria-pressed={view === "month"}
-              disabled={!interactiveReady}
-              onClick={() => setView("month")}
-            >
-              Month
-            </button>
-          </div>
-          <span className="preview-today-control">Today</span>
-          <ChevronLeft size={17} />
-          <ChevronRight size={17} />
-        </div>
-        <h2>October 2026</h2>
-        {view === "week" ? (
-          <>
-            <div className="preview-day-headings">
-              <span>GMT+7</span>
-              {weekdays.map((day, index) => (
-                <span key={day}>
-                  {day}{" "}
-                  <b className={index === 2 ? "preview-date-active" : ""}>
-                    {12 + index}
-                  </b>
-                </span>
-              ))}
-            </div>
-            <div className="preview-time-grid">
-              <div className="preview-hours">
-                {[9, 10, 11, 12, 13, 14].map((hour) => (
-                  <span key={hour}>{String(hour).padStart(2, "0")}:00</span>
-                ))}
-              </div>
-              <div className="preview-event-grid">
-                {weekdays.map((day) => (
-                  <div className="preview-column" key={day} />
-                ))}
-                {sampleEvents.map((event) => (
-                  <Popover key={event.title}>
-                    <PopoverTrigger asChild>
-                      <button
-                        className="preview-event"
-                        disabled={!interactiveReady}
-                        style={{
-                          left: `calc(${(event.day * 100) / 7}% + 3px)`,
-                          top: `${(event.start - 9) * 60}px`,
-                          height: event.duration * 60 - 4,
-                          background: `${event.color}40`,
-                          borderColor: event.color,
-                        }}
-                      >
-                        <strong>{event.title}</strong>
-                        <span>{event.time}</span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="preview-event-details"
-                      data-theme="light"
-                      side="top"
-                    >
-                      <span className="demo-label">EXAMPLE EVENT</span>
-                      <h3>{event.title}</h3>
-                      <p>
-                        October {12 + event.day}, 2026 · {event.time}
-                      </p>
-                      <p>
-                        This is a product preview. Your real calendar lives in
-                        the app.
-                      </p>
-                      <a href="/app">
-                        Open calendar <ArrowUpRight size={14} />
-                      </a>
-                    </PopoverContent>
-                  </Popover>
-                ))}
-                <div className="preview-now-line" style={{ top: 182 }}>
-                  <i />
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="preview-large-month" aria-label="Month preview">
-            {weekdays.map((day) => (
-              <strong key={day}>{day}</strong>
-            ))}
-            {Array.from({ length: 35 }, (_, index) => (
-              <div key={index}>
-                <span>
-                  {index < 3 ? 28 + index : index === 34 ? 1 : index - 2}
-                </span>
-                {sampleEvents
-                  .filter((event) => event.day + 14 === index)
-                  .map((event) => (
-                    <p key={event.title} style={{ borderColor: event.color }}>
-                      {event.title}
-                    </p>
-                  ))}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PhonePreview() {
-  return (
-    <div
-      className="phone-preview"
-      data-theme="light"
-      aria-label="Calendar mobile example: month above a daily agenda"
-    >
-      <div className="phone-status">
-        <b>9:41</b>
-        <span className="phone-island" />
-        <span>▮▮▮ ▰</span>
-      </div>
-      <div className="phone-heading">
-        <Menu size={19} />
-        <strong>October</strong>
-        <CalendarDays size={19} />
-      </div>
-      <MiniMonth mobile />
-      <div className="phone-agenda-date">
-        Wednesday, October 14 <span>3 events</span>
-      </div>
-      {[
-        sampleEvents[2],
-        sampleEvents[6],
-        {
-          ...sampleEvents[0],
-          title: "A moment to reset",
-          time: "16:00 – 16:30",
-          color: "#7b9f87",
-        },
-      ].map((event) => (
-        <div className="phone-agenda-event" key={event.title}>
-          <span>{event.time.slice(0, 5)}</span>
-          <i style={{ background: event.color }} />
-          <div>
-            <strong>{event.title}</strong>
-            <p>{event.time}</p>
-          </div>
-        </div>
-      ))}
-      <span className="phone-add">
-        <Plus size={25} />
-      </span>
-      <div className="phone-home-indicator" />
-    </div>
-  );
-}
-
-export function DownloadSection() {
-  return (
-    <section className="download-section" id="download">
-      <span className="section-eyebrow">A PLACE FOR EVERY DAY</span>
-      <h2>Make yourself some room.</h2>
-      <p>Calendar is in preview. Pick your platform and follow along.</p>
-      <div className="platform-grid">
-        <article>
-          <Laptop />
-          <h3>Windows</h3>
-          <span className="platform-status available">Developer preview</span>
-          <p>
-            Native desktop app. Current builds require a local backend and
-            Google setup.
-          </p>
-          <Button asChild className="marketing-button">
-            <a href={`${repository}/actions/workflows/ci.yml`}>
-              View preview builds <ArrowUpRight />
-            </a>
-          </Button>
-        </article>
-        <article>
-          <Laptop />
-          <h3>macOS</h3>
-          <span className="platform-status">In development</span>
-          <p>
-            A native desktop experience with your upcoming day in the menu bar.
-          </p>
-          <span className="unavailable-download">No public download yet</span>
-        </article>
-        <article>
-          <Smartphone />
-          <h3>Android</h3>
-          <span className="platform-status">In development</span>
-          <p>
-            A month at a glance, with a simple agenda for the day you choose.
-          </p>
-          <a className="platform-text-link" href={`${repository}/pull/3`}>
-            Follow mobile progress <ArrowUpRight size={14} />
-          </a>
-        </article>
-        <article>
-          <Smartphone />
-          <h3>iOS</h3>
-          <span className="platform-status">In development</span>
-          <p>
-            Native date and time controls. TestFlight access will come after
-            device testing.
-          </p>
-          <span className="unavailable-download">
-            TestFlight not available yet
-          </span>
-        </article>
-      </div>
-      <p className="download-note">
-        Preview artifacts may require a GitHub account and expire. Signed public
-        installers will appear here when ready.
-      </p>
-    </section>
   );
 }
 
@@ -493,9 +117,7 @@ export function LandingPage() {
               Open calendar <ArrowUpRight size={15} />
             </a>
           </div>
-          <span className="hero-note">
-            Built for desktop. Growing with you.
-          </span>
+          <span className="hero-note">Built for desktop. Growing with you.</span>
         </div>
         <div className="hero-product">
           <ProductPreview />
@@ -540,9 +162,7 @@ export function LandingPage() {
             <br />
             Nothing in the way.
           </h3>
-          <p>
-            Switch between a spacious week and the bigger picture of a month.
-          </p>
+          <p>Switch between a spacious week and the bigger picture of a month.</p>
         </article>
         <article className="feature-card">
           <span className="feature-number">02 / PLANS CAN CHANGE</span>
@@ -560,10 +180,7 @@ export function LandingPage() {
             <br />
             Then move it.
           </h3>
-          <p>
-            Drag an event into place. Pull its edge when you need a little
-            longer.
-          </p>
+          <p>Drag an event into place. Pull its edge when you need a little longer.</p>
         </article>
         <article className="feature-card">
           <span className="feature-number">03 / ALL TOGETHER</span>
@@ -589,23 +206,20 @@ export function LandingPage() {
             One place.
           </h3>
           <p>
-            Keep work and personal calendars together, with colors that feel
-            familiar.
+            Keep work and personal calendars together, with colors that feel familiar.
           </p>
         </article>
       </section>
       <section className="mobile-feature">
         <div className="mobile-feature-copy">
-          <span className="section-eyebrow">
-            THE BIG PICTURE. THE LITTLE PLANS.
-          </span>
+          <span className="section-eyebrow">THE BIG PICTURE. THE LITTLE PLANS.</span>
           <h2>
             A month in view.
             <br />A day in hand.
           </h2>
           <p>
-            See the shape of your month. Tap a date for a simple list of what’s
-            ahead. No squeezing an entire desktop onto your phone.
+            See the shape of your month. Tap a date for a simple list of what’s ahead.
+            No squeezing an entire desktop onto your phone.
           </p>
           <ul>
             <li>
@@ -623,9 +237,7 @@ export function LandingPage() {
           <a className="marketing-inline-link" href="/download">
             See mobile availability <ArrowRight size={16} />
           </a>
-          <span className="feature-availability">
-            Mobile is in development.
-          </span>
+          <span className="feature-availability">Mobile is in development.</span>
         </div>
         <div className="phone-stage">
           <span className="phone-orbit" />
@@ -678,12 +290,12 @@ export function LandingPage() {
             Just a glance away.
           </h2>
           <p>
-            Keep your upcoming schedule close in the Windows tray. macOS
-            menu-bar support is being prepared, too.
+            Keep your upcoming schedule close in the Windows tray. macOS menu-bar
+            support is being prepared, too.
           </p>
           <p className="small-feature-note">
-            Optional desktop reminders are in development. They require Calendar
-            to stay running.
+            Optional desktop reminders are in development. They require Calendar to stay
+            running.
           </p>
         </div>
       </section>
@@ -698,8 +310,8 @@ export function LandingPage() {
         </div>
         <div>
           <p>
-            Choose which calendars you see. View previously loaded events
-            offline. Disconnect an account when you’re done.
+            Choose which calendars you see. View previously loaded events offline.
+            Disconnect an account when you’re done.
           </p>
           <a href="/privacy" className="marketing-inline-link">
             How the preview handles your data <ArrowUpRight size={16} />

@@ -16,6 +16,7 @@ import { colors } from "@calendar/design-tokens";
 import { addDays, clockTime, dateKey, localInstant } from "@calendar/calendar";
 import type { EventInput } from "@calendar/api";
 import { DateField } from "./date-field";
+
 export const textStyle = { fontFamily: "Inter", color: colors.text };
 export const inputStyle = {
   ...textStyle,
@@ -23,6 +24,7 @@ export const inputStyle = {
   borderRadius: 8,
   padding: 12,
 };
+
 export function Label({
   children,
   muted = false,
@@ -30,12 +32,9 @@ export function Label({
   children: React.ReactNode;
   muted?: boolean;
 }) {
-  return (
-    <Text style={[textStyle, muted && { color: colors.muted }]}>
-      {children}
-    </Text>
-  );
+  return <Text style={[textStyle, muted && { color: colors.muted }]}>{children}</Text>;
 }
+
 export function Action({
   label,
   onPress,
@@ -60,6 +59,7 @@ export function Action({
     </Pressable>
   );
 }
+
 export function Sheet({
   title,
   visible,
@@ -95,6 +95,7 @@ export function Sheet({
     </Modal>
   );
 }
+
 export function MobileEditor({
   draft,
   onChange,
@@ -123,19 +124,21 @@ export function MobileEditor({
     try {
       const start = startValue.trim().split(/\s+/);
       const end = endValue.trim().split(/\s+/);
-      const startInstant = localInstant(
-        start[0],
-        draft.allDay ? "00:00" : start[1],
-      );
+      const startInstant = localInstant(start[0], draft.allDay ? "00:00" : start[1]);
       const endInstant = localInstant(end[0], draft.allDay ? "00:00" : end[1]);
+
       if (!draft.title.trim()) {
         setError("Add an event title.");
+
         return;
       }
+
       if (Date.parse(endInstant) <= Date.parse(startInstant)) {
         setError("The end must be after the start.");
+
         return;
       }
+
       onSave({
         ...draft,
         title: draft.title.trim(),
@@ -147,6 +150,7 @@ export function MobileEditor({
       setError("Use YYYY-MM-DD HH:mm for both dates.");
     }
   };
+
   return (
     <ScrollView
       keyboardShouldPersistTaps="handled"
@@ -173,9 +177,7 @@ export function MobileEditor({
         disabled={saving || draft.readOnly || !editable}
         allDay={draft.allDay}
       />
-      <Label muted>
-        {draft.allDay ? "Ends before (exclusive date)" : "Ends"}
-      </Label>
+      <Label muted>{draft.allDay ? "Ends before (exclusive date)" : "Ends"}</Label>
       <DateField
         label="End date and time"
         value={endValue}
@@ -195,9 +197,11 @@ export function MobileEditor({
             try {
               if (allDay) {
                 const endDate = addDays(startValue.slice(0, 10), 1);
+
                 setStartValue(`${startValue.slice(0, 10)} 00:00`);
                 setEndValue(`${endDate} 00:00`);
               }
+
               onChange({ ...draft, allDay });
               setError("");
             } catch {
@@ -213,8 +217,7 @@ export function MobileEditor({
           key={calendar.id}
           onPress={() => onChange({ ...draft, calendarId: calendar.id })}
           style={{
-            backgroundColor:
-              draft.calendarId === calendar.id ? "#444" : "#292929",
+            backgroundColor: draft.calendarId === calendar.id ? "#444" : "#292929",
             padding: 12,
             borderRadius: 8,
           }}
@@ -242,8 +245,8 @@ export function MobileEditor({
         onChangeText={(description) => onChange({ ...draft, description })}
       />
       <Label muted>
-        Times use Asia/Jakarta. All-day ends are exclusive. Recurring edits
-        affect this occurrence.
+        Times use Asia/Jakarta. All-day ends are exclusive. Recurring edits affect this
+        occurrence.
       </Label>
       {!!error && <Label>{error}</Label>}
       {!draft.readOnly && (
@@ -253,11 +256,7 @@ export function MobileEditor({
           onPress={submit}
         >
           <Text style={{ fontFamily: "Inter", color: "#191919" }}>
-            {saving
-              ? "Saving…"
-              : editable
-                ? "Save event"
-                : "Offline · viewing only"}
+            {saving ? "Saving…" : editable ? "Save event" : "Offline · viewing only"}
           </Text>
         </Pressable>
       )}

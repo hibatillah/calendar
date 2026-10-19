@@ -25,6 +25,7 @@ pub struct GoogleCalendar {
     #[serde(default)]
     pub time_zone: String,
 }
+
 #[derive(Clone, Serialize, SimpleObject)]
 pub struct GoogleConnection {
     pub configured: bool,
@@ -39,11 +40,13 @@ pub struct GoogleConnection {
     pub message: String,
     pub calendars: Vec<GoogleCalendar>,
 }
+
 #[derive(Clone)]
 struct Config {
     client_id: String,
     client_secret: String,
 }
+
 #[derive(Clone, Serialize, Deserialize)]
 struct Credentials {
     client_id: String,
@@ -59,6 +62,7 @@ struct Credentials {
     #[serde(default)]
     picture: String,
 }
+
 #[derive(Deserialize)]
 struct Tokens {
     access_token: String,
@@ -66,11 +70,13 @@ struct Tokens {
     expires_in: i64,
     scope: Option<String>,
 }
+
 struct Pending {
     state: String,
     verifier: String,
     redirect_uri: String,
 }
+
 #[derive(Default)]
 struct State {
     loaded: bool,
@@ -86,6 +92,7 @@ struct State {
         Vec<calendar_core::CalendarEvent>,
     )>,
 }
+
 #[derive(Clone)]
 pub struct GoogleAuth {
     pub slot: String,
@@ -94,6 +101,7 @@ pub struct GoogleAuth {
     state: Arc<Mutex<State>>,
     client: reqwest::Client,
 }
+
 fn config() -> Option<Config> {
     let values: HashMap<_, _> = dotenvy::from_path_iter(".env")
         .map(|values| values.filter_map(Result::ok).collect())
@@ -113,9 +121,11 @@ fn config() -> Option<Config> {
         client_secret: value("GOOGLE_CLIENT_SECRET").unwrap_or_default(),
     })
 }
+
 fn challenge(verifier: &str) -> String {
     URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()))
 }
+
 fn calendar_api_error(status: u16, body: &serde_json::Value) -> String {
     let reasons: Vec<&str> = ["errors", "details"]
         .into_iter()
@@ -190,6 +200,7 @@ fn provider_operation(value: &serde_json::Value) -> Option<&str> {
         .as_str()
         .or_else(|| private["randevuOperation"].as_str())
 }
+
 async fn store_credentials(slot: String, credentials: Option<Credentials>) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         let entry = credential_entry(&slot)?;
@@ -223,6 +234,7 @@ async fn store_credentials(slot: String, credentials: Option<Credentials>) -> Re
     .await
     .map_err(|_| "Credential storage task failed.")?
 }
+
 impl Default for GoogleAuth {
     fn default() -> Self {
         Self {
@@ -238,6 +250,7 @@ impl Default for GoogleAuth {
         }
     }
 }
+
 impl GoogleAuth {
     async fn initialize(&self, state: &mut State) {
         if state.loaded {
@@ -263,6 +276,7 @@ impl GoogleAuth {
             }
         }
     }
+
     async fn discover(&self, credentials: &mut Credentials) -> Result<Vec<GoogleCalendar>, String> {
         let config = self
             .config
@@ -317,6 +331,7 @@ impl GoogleAuth {
             }
             store_credentials(self.slot.clone(), Some(credentials.clone())).await?;
         }
+
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct Page {
@@ -363,6 +378,7 @@ impl GoogleAuth {
         }
         Ok(calendars)
     }
+
     pub async fn status(&self) -> GoogleConnection {
         let mut state = self.state.lock().await;
         self.initialize(&mut state).await;
@@ -460,6 +476,7 @@ impl GoogleAuth {
             calendars: state.calendars.clone(),
         }
     }
+
     pub async fn begin(&self) -> Result<String, String> {
         let config = self.config.as_ref().ok_or(
             "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env, then restart the backend.",
@@ -544,6 +561,7 @@ impl GoogleAuth {
         tracing::info!(action = "google_sign_in_started");
         Ok(url.into())
     }
+
     async fn complete(&self, parameters: HashMap<String, String>) -> Result<bool, ()> {
         let mut state = self.state.lock().await;
         let pending = state.pending.as_ref().ok_or(())?;
@@ -580,6 +598,7 @@ impl GoogleAuth {
             }
         }
     }
+
     async fn exchange(
         &self,
         code: &str,
@@ -648,6 +667,7 @@ impl GoogleAuth {
         store_credentials(self.slot.clone(), Some(credentials.clone())).await?;
         Ok((credentials, calendars))
     }
+
     pub async fn events(
         &self,
         start: chrono::NaiveDate,
@@ -1242,6 +1262,7 @@ mod tests {
             "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
         );
     }
+
     #[tokio::test]
     async fn invalid_state_does_not_consume_pending_sign_in() {
         let auth = GoogleAuth {

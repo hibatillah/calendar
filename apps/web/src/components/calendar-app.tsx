@@ -39,22 +39,19 @@ import { useCalendar, type SnapshotStorage } from "@calendar/api/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "./ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+
 const transport = createTransport("/api/graphql");
 const storage: SnapshotStorage = {
   async read(key) {
     const value = localStorage.getItem(`calendar:snapshot:${key}`);
+
     return value ? JSON.parse(value) : undefined;
   },
   async write(key, value) {
@@ -67,6 +64,7 @@ const storage: SnapshotStorage = {
   },
 };
 const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export function CalendarApp() {
   const { theme, selectTheme } = useCalendarTheme();
   const [today, setToday] = useState(dateKey);
@@ -76,14 +74,10 @@ export function CalendarApp() {
   const [view, setView] = useState<"week" | "month">("week");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"general" | "accounts">(
-    "general",
-  );
+  const [settingsTab, setSettingsTab] = useState<"general" | "accounts">("general");
   const [activityOpen, setActivityOpen] = useState(false);
   const [activity, setActivity] = useState<string[]>([]);
-  const [hiddenCalendars, setHiddenCalendars] = useState<Set<string>>(
-    new Set(),
-  );
+  const [hiddenCalendars, setHiddenCalendars] = useState<Set<string>>(new Set());
   const [draft, setDraft] = useState<EventInput | null>(null);
   const [saveCommand, setSaveCommand] = useState<{
     event: EventInput;
@@ -103,8 +97,7 @@ export function CalendarApp() {
   const calendars = accounts.flatMap((account) =>
     account.calendars.map((item) => ({
       ...item,
-      writable:
-        account.writeAccess && ["owner", "writer"].includes(item.accessRole),
+      writable: account.writeAccess && ["owner", "writer"].includes(item.accessRole),
     })),
   );
   const events = (calendar.data?.events ?? []).filter(
@@ -118,26 +111,31 @@ export function CalendarApp() {
   const scrollAccumulator = useRef(0);
   const log = (action: string) =>
     setActivity((previous) =>
-      [`${new Date().toLocaleTimeString()} · ${action}`, ...previous].slice(
-        0,
-        80,
-      ),
+      [`${new Date().toLocaleTimeString()} · ${action}`, ...previous].slice(0, 80),
     );
+
   useEffect(() => {
     const saved = localStorage.getItem("calendar:week-start");
+
     if (saved === "0" || saved === "1") {
       const start = Number(saved) as WeekStart;
+
       setWeekStart(start);
       setFirstDay(startOfWeek(dateKey(), start));
     }
+
     const interval = setInterval(() => setToday(dateKey()), 60_000);
+
     return () => clearInterval(interval);
   }, []);
+
   const goToday = () => {
     const current = dateKey();
+
     setSelectedDate(current);
     setFirstDay(startOfWeek(current, weekStart));
   };
+
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (
@@ -151,40 +149,55 @@ export function CalendarApp() {
             ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)))
       )
         return;
+
       if (event.key.toLowerCase() === "w") setView("week");
+
       if (event.key.toLowerCase() === "m") setView("month");
+
       if (event.key.toLowerCase() === "t") goToday();
     };
+
     window.addEventListener("keydown", handleKey);
+
     return () => window.removeEventListener("keydown", handleKey);
   }, [weekStart, draft, settingsOpen]);
   useEffect(() => {
     const element = scroller.current;
+
     if (!element) return;
+
     element.scrollTop = 7 * 60;
+
     const scroll = (event: WheelEvent) => {
-      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY) && !event.shiftKey)
-        return;
+      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY) && !event.shiftKey) return;
+
       event.preventDefault();
       scrollAccumulator.current += event.shiftKey ? event.deltaY : event.deltaX;
+
       if (Math.abs(scrollAccumulator.current) > 80) {
         const direction = Math.sign(scrollAccumulator.current);
+
         setFirstDay((previous) => {
           const next = addDays(previous, direction);
+
           setSelectedDate(next);
+
           return next;
         });
         scrollAccumulator.current = 0;
       }
     };
+
     element.addEventListener("wheel", scroll, { passive: false });
+
     return () => element.removeEventListener("wheel", scroll);
   }, [view]);
+
   const navigate = (direction: number) => {
-    if (view === "month")
-      setSelectedDate((previous) => addMonths(previous, direction));
+    if (view === "month") setSelectedDate((previous) => addMonths(previous, direction));
     else {
       const next = addDays(firstDay, direction * 7);
+
       setFirstDay(next);
       setSelectedDate(next);
     }
@@ -193,15 +206,17 @@ export function CalendarApp() {
     const selectedCalendar =
       calendars.find((item) => item.writable && item.primary) ??
       calendars.find((item) => item.writable);
+
     if (!selectedCalendar) {
       setSettingsTab("accounts");
       setSettingsOpen(true);
-      setMessage(
-        "Connect a Google account and approve calendar editing first.",
-      );
+      setMessage("Connect a Google account and approve calendar editing first.");
+
       return;
     }
+
     const start = localInstant(date, time);
+
     setSaveCommand(null);
     setDraft({
       eventId: crypto.randomUUID(),
@@ -213,9 +228,7 @@ export function CalendarApp() {
       allDay: false,
       description: "",
       location: "",
-      color:
-        parseInt(selectedCalendar.backgroundColor.replace("#", ""), 16) ||
-        5614047,
+      color: parseInt(selectedCalendar.backgroundColor.replace("#", ""), 16) || 5614047,
       revision: 0,
       readOnly: false,
     });
@@ -227,30 +240,36 @@ export function CalendarApp() {
   ) => {
     if (calendar.save.isPending || calendar.isError) {
       setMessage("Wait for a working connection before saving.");
+
       return;
     }
-    if (
-      !event.title.trim() ||
-      Date.parse(event.end) <= Date.parse(event.start)
-    ) {
+
+    if (!event.title.trim() || Date.parse(event.end) <= Date.parse(event.start)) {
       setMessage("Enter a title and an end time after the start.");
+
       return;
     }
+
     const command =
       fromEditor &&
       saveCommand &&
       JSON.stringify(saveCommand.event) === JSON.stringify(event)
         ? saveCommand
         : { event, expectedRevision, operationId: crypto.randomUUID() };
+
     if (fromEditor) setSaveCommand(command);
+
     setMessage("Saving…");
     log("Saving event");
+
     try {
       await calendar.save.mutateAsync(command);
+
       if (fromEditor) {
         setDraft(null);
         setSaveCommand(null);
       }
+
       setMessage("Saved");
       log("Event saved");
     } catch (error) {
@@ -264,13 +283,17 @@ export function CalendarApp() {
   };
   const connectAccount = async (accountId?: string) => {
     const popup = window.open("about:blank", "_blank");
+
     setAccountBusy(true);
+
     try {
       const result = await transport(ConnectCalendarAccountDocument, {
         accountId,
       });
+
       if (popup) popup.location.href = result.connectGoogle;
       else window.location.href = result.connectGoogle;
+
       log("Google sign-in started");
     } catch (error) {
       popup?.close();
@@ -281,6 +304,7 @@ export function CalendarApp() {
   };
   const disconnectAccount = async (accountId: string) => {
     setAccountBusy(true);
+
     try {
       await transport(DisconnectCalendarAccountDocument, { accountId });
       await queryClient.cancelQueries({ queryKey: ["calendar"] });
@@ -296,7 +320,9 @@ export function CalendarApp() {
   };
   const openEvent = (event: EventRecord) => {
     setSaveCommand(null);
+
     const input = event;
+
     setDraft(input);
   };
   const renderMonthPicker = () => (
@@ -350,6 +376,7 @@ export function CalendarApp() {
       </div>
     </>
   );
+
   return (
     <div className="calendar-shell">
       {sidebarOpen && (
@@ -392,9 +419,9 @@ export function CalendarApp() {
                     onClick={() =>
                       setHiddenCalendars((previous) => {
                         const next = new Set(previous);
-                        next.has(item.id)
-                          ? next.delete(item.id)
-                          : next.add(item.id);
+
+                        next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+
                         return next;
                       })
                     }
@@ -431,10 +458,7 @@ export function CalendarApp() {
           </div>
           <Popover open={activityOpen} onOpenChange={setActivityOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                className="justify-start text-muted-foreground"
-              >
+              <Button variant="ghost" className="justify-start text-muted-foreground">
                 <CircleHelp size={17} />
                 Activity
               </Button>
@@ -603,18 +627,13 @@ export function CalendarApp() {
           <div role="alert" className="px-6 pb-3 text-amber-400 text-xs">
             {calendar.data ? "Offline snapshot · " : ""}
             {calendar.error.message}{" "}
-            <button
-              onClick={() => void calendar.refetch()}
-              className="underline ml-2"
-            >
+            <button onClick={() => void calendar.refetch()} className="underline ml-2">
               Retry
             </button>
           </div>
         )}
         {calendar.isPending && (
-          <p className="px-6 text-xs text-muted-foreground">
-            Loading calendars…
-          </p>
+          <p className="px-6 text-xs text-muted-foreground">Loading calendars…</p>
         )}
         {view === "month" ? (
           <>
@@ -670,9 +689,7 @@ export function CalendarApp() {
           <div className="week-scroller" ref={scroller}>
             <div className="week-canvas">
               <div className="week-heading">
-                <div className="text-[10px] text-muted-foreground pt-3 pl-3">
-                  GMT+7
-                </div>
+                <div className="text-[10px] text-muted-foreground pt-3 pl-3">GMT+7</div>
                 {visibleDates.map((date) => (
                   <div className="day-heading" key={date}>
                     {dayLabel(date).split(" ")[0]}{" "}
@@ -715,6 +732,7 @@ export function CalendarApp() {
                     className="day-column"
                     onDoubleClick={(event) => {
                       if (event.target !== event.currentTarget) return;
+
                       const minutes = Math.min(
                         1425,
                         Math.floor(
@@ -723,6 +741,7 @@ export function CalendarApp() {
                             15,
                         ) * 15,
                       );
+
                       newEvent(
                         date,
                         `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`,
@@ -731,12 +750,14 @@ export function CalendarApp() {
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
                       event.preventDefault();
+
                       const moved = events.find(
                         (item) =>
-                          item.eventId ===
-                          event.dataTransfer.getData("text/plain"),
+                          item.eventId === event.dataTransfer.getData("text/plain"),
                       );
+
                       if (!moved || moved.readOnly) return;
+
                       const minutes = Math.min(
                         1425,
                         Math.max(
@@ -753,6 +774,7 @@ export function CalendarApp() {
                         `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`,
                       );
                       const input = moved;
+
                       void saveEvent(
                         {
                           ...input,
@@ -780,9 +802,7 @@ export function CalendarApp() {
                             placement.event.eventId,
                           )
                         }
-                        onClick={() =>
-                          openEvent(placement.event as EventRecord)
-                        }
+                        onClick={() => openEvent(placement.event as EventRecord)}
                         style={{
                           top: placement.top,
                           height: placement.height,
@@ -803,31 +823,33 @@ export function CalendarApp() {
                             onPointerDown={(pointer) => {
                               pointer.preventDefault();
                               pointer.stopPropagation();
+
                               const origin = pointer.clientY;
                               const event = placement.event as EventRecord;
                               const release = (end: PointerEvent) => {
-                                document.removeEventListener(
-                                  "pointerup",
-                                  release,
-                                );
+                                document.removeEventListener("pointerup", release);
+
                                 const difference =
                                   Math.round((end.clientY - origin) / 15) * 15;
+
                                 if (!difference) return;
+
                                 const input = event;
+
                                 void saveEvent(
                                   {
                                     ...input,
                                     end: new Date(
                                       Math.max(
                                         Date.parse(event.start) + 900000,
-                                        Date.parse(event.end) +
-                                          difference * 60000,
+                                        Date.parse(event.end) + difference * 60000,
                                       ),
                                     ).toISOString(),
                                   },
                                   event.revision,
                                 );
                               };
+
                               document.addEventListener("pointerup", release, {
                                 once: true,
                               });
@@ -867,9 +889,7 @@ export function CalendarApp() {
             </nav>
             <section className="flex-1 p-9 overflow-auto">
               <DialogTitle>
-                {settingsTab === "general"
-                  ? "Calendar view"
-                  : "Calendar accounts"}
+                {settingsTab === "general" ? "Calendar view" : "Calendar accounts"}
               </DialogTitle>
               <DialogDescription className="mt-3">
                 {settingsTab === "general"
@@ -899,11 +919,9 @@ export function CalendarApp() {
                       value={weekStart}
                       onChange={(event) => {
                         const start = Number(event.target.value) as WeekStart;
+
                         setWeekStart(start);
-                        localStorage.setItem(
-                          "calendar:week-start",
-                          String(start),
-                        );
+                        localStorage.setItem("calendar:week-start", String(start));
                         setFirstDay(startOfWeek(selectedDate, start));
                       }}
                     >
@@ -988,6 +1006,7 @@ export function CalendarApp() {
     </div>
   );
 }
+
 function EventEditor({
   draft,
   calendars,
@@ -1002,17 +1021,18 @@ function EventEditor({
   onSave: () => void;
 }) {
   const [error, setError] = useState("");
-  const field = (patch: Partial<EventInput>) =>
-    onChange({ ...draft, ...patch });
+  const field = (patch: Partial<EventInput>) => onChange({ ...draft, ...patch });
   const updateInstant = (key: "start" | "end", value: string) => {
     try {
       const [date, time] = value.split("T");
+
       field({ [key]: localInstant(date, time) });
       setError("");
     } catch {
       setError("Choose a valid date and time.");
     }
   };
+
   return (
     <form
       className="space-y-4"
@@ -1021,9 +1041,7 @@ function EventEditor({
         onSave();
       }}
     >
-      <h2 className="font-semibold">
-        {draft.readOnly ? "Event details" : "Event"}
-      </h2>
+      <h2 className="font-semibold">{draft.readOnly ? "Event details" : "Event"}</h2>
       <fieldset disabled={saving || draft.readOnly} className="space-y-4">
         <input
           aria-label="Event title"
@@ -1071,14 +1089,12 @@ function EventEditor({
             checked={draft.allDay}
             onChange={(event) => {
               const allDay = event.target.checked;
+
               field({
                 allDay,
                 ...(allDay
                   ? {
-                      start: localInstant(
-                        dateKey(new Date(draft.start)),
-                        "00:00",
-                      ),
+                      start: localInstant(dateKey(new Date(draft.start)), "00:00"),
                       end: localInstant(
                         addDays(dateKey(new Date(draft.start)), 1),
                         "00:00",

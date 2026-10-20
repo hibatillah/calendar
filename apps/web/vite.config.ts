@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
+import { nitro } from "nitro/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -72,6 +73,7 @@ export default defineConfig({
     },
     tailwindcss(),
     tanstackStart(),
+    ...(process.env.VERCEL ? [nitro()] : []),
     react(),
   ],
 });

@@ -1,4 +1,4 @@
-import { ArrowUpRight, Globe, Laptop, Smartphone } from "lucide-react";
+import { ArrowUpRight, Download, Globe, Laptop, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   fetchDownloadRelease,
@@ -64,22 +64,30 @@ export function DownloadSection() {
       <span className="section-eyebrow">A PLACE FOR EVERY DAY</span>
       <h2>Make yourself some room.</h2>
       <p>Calendar is in preview. Pick your platform to try it.</p>
-      <p role="status" aria-live="polite">
-        {loading
-          ? "Checking the latest release…"
-          : failed
-            ? "Could not load downloads. Check GitHub Releases below."
-            : release
-              ? `Latest preview: ${release.tag}`
+      {(loading || failed || !release) && (
+        <p role="status" aria-live="polite">
+          {loading
+            ? "Checking the latest release…"
+            : failed
+              ? "Could not load downloads. Please try again shortly."
               : "The first downloadable release is on its way."}
-      </p>
+        </p>
+      )}
       <div className="platform-grid">
         {platforms.map((platform) => {
           const downloadUrl =
-            platform.key === "web" ? "/app" : release?.assets[platform.key];
+            platform.key === "web"
+              ? "/app"
+              : platform.key === "windows"
+                ? (release?.assets.windows ?? release?.assets.windowsPortable)
+                : release?.assets.android;
+          const portableWindows =
+            platform.key === "windows" &&
+            !release?.assets.windows &&
+            !!release?.assets.windowsPortable;
 
           return (
-            <article key={platform.key}>
+            <article key={platform.key} className={`platform-${platform.key}`}>
               <platform.icon />
               <h3>{platform.title}</h3>
               <span className={`platform-status${downloadUrl ? " available" : ""}`}>
@@ -89,12 +97,21 @@ export function DownloadSection() {
                     ? "Developer preview"
                     : "Not available yet"}
               </span>
-              <p>{platform.description}</p>
+              <p>
+                {portableWindows
+                  ? "Portable x64 desktop app and local backend. Extract the ZIP to run it. Unsigned preview; Google OAuth setup is required."
+                  : platform.description}
+              </p>
               {downloadUrl ? (
                 <Button asChild className="marketing-button">
-                  <a href={downloadUrl} aria-label={platform.label}>
-                    {platform.buttonText}
-                    <ArrowUpRight />
+                  <a
+                    href={downloadUrl}
+                    aria-label={
+                      portableWindows ? "Download Windows ZIP" : platform.label
+                    }
+                  >
+                    {portableWindows ? "Windows portable ZIP" : platform.buttonText}
+                    {platform.key === "web" ? <ArrowUpRight /> : <Download />}
                   </a>
                 </Button>
               ) : (
@@ -104,29 +121,6 @@ export function DownloadSection() {
           );
         })}
       </div>
-      <p className="download-note">
-        <a href={release?.url ?? `${repositoryUrl}/releases`}>
-          Release notes and all files
-        </a>
-        {release?.assets.windowsPortable && (
-          <>
-            {" "}
-            · <a href={release.assets.windowsPortable}>Windows portable ZIP</a>
-          </>
-        )}
-        {release?.assets.checksums && (
-          <>
-            {" "}
-            · <a href={release.assets.checksums}>SHA-256 checksums</a>
-          </>
-        )}
-        {release?.assets.web && (
-          <>
-            {" "}
-            · <a href={release.assets.web}>Web build (developers)</a>
-          </>
-        )}
-      </p>
       <p className="download-note">
         Downloads are public GitHub Release assets. See the{" "}
         <a href={`${repositoryUrl}/blob/main/CONTRIBUTING.md`}>setup guide</a> before

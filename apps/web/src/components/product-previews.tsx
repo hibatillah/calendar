@@ -31,7 +31,7 @@ export const sampleEvents = [
     day: 0,
     start: 9,
     duration: 1,
-    color: "#7198bc",
+    color: "#419ce3",
     time: "09:00 – 10:00",
   },
   {
@@ -39,7 +39,7 @@ export const sampleEvents = [
     day: 1,
     start: 10,
     duration: 2,
-    color: "#d28b77",
+    color: "#ef795f",
     time: "10:00 – 12:00",
   },
   {
@@ -47,7 +47,7 @@ export const sampleEvents = [
     day: 2,
     start: 9.5,
     duration: 1,
-    color: "#bba16b",
+    color: "#d6a025",
     time: "09:30 – 10:30",
   },
   {
@@ -55,7 +55,7 @@ export const sampleEvents = [
     day: 3,
     start: 9,
     duration: 2.5,
-    color: "#7b9f87",
+    color: "#41ad78",
     time: "09:00 – 11:30",
   },
   {
@@ -63,7 +63,7 @@ export const sampleEvents = [
     day: 4,
     start: 10.5,
     duration: 1,
-    color: "#7198bc",
+    color: "#419ce3",
     time: "10:30 – 11:30",
   },
   {
@@ -71,7 +71,7 @@ export const sampleEvents = [
     day: 5,
     start: 12,
     duration: 2,
-    color: "#bba16b",
+    color: "#d6a025",
     time: "12:00 – 14:00",
   },
   {
@@ -79,7 +79,7 @@ export const sampleEvents = [
     day: 2,
     start: 12,
     duration: 1,
-    color: "#d28b77",
+    color: "#ef795f",
     time: "12:00 – 13:00",
   },
 ];
@@ -148,7 +148,7 @@ export function ProductPreview() {
         <p className="preview-account">alex@example.com</p>
         {["Personal", "Work", "A little time outside"].map((calendar, index) => (
           <div className="preview-calendar" key={calendar}>
-            <i style={{ background: ["#d38b77", "#7198bc", "#7b9f87"][index] }} />
+            <i style={{ background: ["#d38b77", "#419ce3", "#41ad78"][index] }} />
             {calendar}
           </div>
         ))}
@@ -214,7 +214,7 @@ export function ProductPreview() {
                           left: `calc(${(event.day * 100) / 7}% + 3px)`,
                           top: `${(event.start - 9) * 60}px`,
                           height: event.duration * 60 - 4,
-                          background: `${event.color}40`,
+                          background: `${event.color}66`,
                           borderColor: event.color,
                         }}
                       >
@@ -299,7 +299,7 @@ export function PhonePreview() {
           ...sampleEvents[0],
           title: "A moment to reset",
           time: "16:00 – 16:30",
-          color: "#7b9f87",
+          color: "#41ad78",
         },
       ].map((event) => (
         <div className="phone-agenda-event" key={event.title}>

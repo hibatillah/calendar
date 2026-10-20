@@ -49,14 +49,11 @@ export function MarketingNav() {
           <a href="/download" onClick={() => setMenuOpen(false)}>
             Download
           </a>
-          <a href={`${repository}/releases`}>
+          <a href={`${repository}/releases`} target="_blank" rel="noopener noreferrer">
             Changelog <ArrowUpRight size={12} />
           </a>
         </nav>
         <div className="marketing-nav-actions">
-          <a href="/app" className="open-app-link">
-            Open calendar <ArrowUpRight size={14} />
-          </a>
           <Button asChild className="marketing-button">
             <a href="/download">Get Calendar</a>
           </Button>
@@ -85,7 +82,7 @@ export function MarketingFooter() {
       <nav aria-label="Footer navigation">
         <a href="/privacy">Preview privacy</a>
         <a href={`${repository}/issues`}>Feedback</a>
-        <a href={repository}>
+        <a href={repository} target="_blank" rel="noopener noreferrer">
           GitHub <ArrowUpRight size={13} />
         </a>
       </nav>
@@ -125,16 +122,15 @@ export function LandingPage() {
               Open calendar <ArrowUpRight size={15} />
             </a>
           </div>
-          <span className="hero-note">Built for desktop. Growing with you.</span>
         </div>
         <div className="hero-product">
           <ProductPreview />
         </div>
-        <div className="hero-preview-caption">
-          <span>Example calendar · click an event to explore</span>
-          <span>WEEK / MONTH</span>
-        </div>
       </section>
+      <div className="hero-preview-caption">
+        <span>Example calendar · click an event to explore</span>
+        <span>WEEK / MONTH</span>
+      </div>
       <section className="landing-intro" id="features">
         <span className="section-eyebrow">LESS BETWEEN YOU AND YOUR DAY</span>
         <h2>
@@ -159,7 +155,7 @@ export function LandingPage() {
                   style={{
                     top: 57 + (index % 3) * 27,
                     height: 45 + (index % 2) * 30,
-                    background: ["#8faebc", "#d7a294", "#a6b59c"][index % 3],
+                    background: ["#62b5ee", "#f49983", "#80cba0"][index % 3],
                   }}
                 />
               </div>
@@ -242,10 +238,6 @@ export function LandingPage() {
               Native date and time controls
             </li>
           </ul>
-          <a className="marketing-inline-link" href="/download">
-            See mobile availability <ArrowRight size={16} />
-          </a>
-          <span className="feature-availability">Mobile is in development.</span>
         </div>
         <div className="phone-stage">
           <span className="phone-orbit" />

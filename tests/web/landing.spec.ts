@@ -27,6 +27,25 @@ test("landing demo works without accessing a connected calendar", async ({ page 
   await expect(
     page.getByRole("link", { name: "Get the Windows preview" }),
   ).toHaveAttribute("href", "/download");
+  await expect(page.getByText("Built for desktop. Growing with you.")).toHaveCount(0);
+  await expect(page.getByText("See mobile availability")).toHaveCount(0);
+  await expect(
+    page.locator(".marketing-nav").getByRole("link", { name: "Open calendar" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Changelog" })).toHaveAttribute(
+    "target",
+    "_blank",
+  );
+  await expect(page.getByRole("link", { name: "GitHub", exact: true })).toHaveAttribute(
+    "target",
+    "_blank",
+  );
+  const heroBounds = await page.locator(".landing-hero").boundingBox();
+  const productBounds = await page.locator(".hero-product").boundingBox();
+  expect(productBounds!.y + productBounds!.height).toBeCloseTo(
+    heroBounds!.y + heroBounds!.height,
+    0,
+  );
 });
 
 test("mobile navigation, availability and privacy pages are usable", async ({
@@ -126,9 +145,7 @@ test("downloads handle unavailable GitHub and missing release assets", async ({
   );
   await page.goto("/download");
   await expect(page.getByRole("status")).toContainText("Could not load downloads");
-  await expect(
-    page.getByRole("link", { name: "Release notes and all files" }),
-  ).toHaveAttribute("href", "https://github.com/hibatillah/calendar/releases");
+  await expect(page.getByText("Release notes and all files")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Download Windows MSI" })).toHaveCount(0);
   await page.route(
     "https://api.github.com/repos/hibatillah/calendar/releases?*",
@@ -159,5 +176,43 @@ test("navigation stays usable after scrolling and returns to its initial positio
   await expect(page).toHaveURL(/#features$/);
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(navigation).not.toHaveClass(/is-floating/);
-  expect((await navigation.boundingBox())!.y).toBe(initialBounds!.y);
+  await expect
+    .poll(async () => (await navigation.boundingBox())!.y)
+    .toBe(initialBounds!.y);
+});
+
+test("Windows offers the portable ZIP until an MSI is released", async ({ page }) => {
+  const downloadUrl =
+    "https://github.com/hibatillah/calendar/releases/download/preview-1/calendar-windows-x64.zip";
+  await page.route(
+    "https://api.github.com/repos/hibatillah/calendar/releases?*",
+    (route) =>
+      route.fulfill({
+        json: [
+          {
+            tag_name: "preview-1",
+            draft: false,
+            published_at: "2026-10-19T00:00:00Z",
+            assets: [
+              {
+                name: "calendar-windows-x64.zip",
+                state: "uploaded",
+                size: 100,
+                browser_download_url: downloadUrl,
+              },
+            ],
+          },
+        ],
+      }),
+  );
+  await page.goto("/download");
+  await expect(
+    page.getByRole("link", { name: "Download Windows ZIP" }),
+  ).toHaveAttribute("href", downloadUrl);
+  await expect(
+    page
+      .getByRole("link", { name: "Download Windows ZIP" })
+      .locator(".lucide-download"),
+  ).toBeVisible();
+  await expect(page.getByText("Latest preview:", { exact: false })).toHaveCount(0);
 });

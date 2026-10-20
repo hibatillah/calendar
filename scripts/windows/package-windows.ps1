@@ -1,7 +1,7 @@
 param([ValidateSet('debug', 'release')][string]$Profile = 'release')
 $ErrorActionPreference = 'Stop'
 
-Set-Location (Split-Path $PSScriptRoot -Parent)
+Set-Location (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent)
 
 $packageDirectory = Join-Path $PWD 'dist/calendar-windows-x64'
 
@@ -13,7 +13,8 @@ foreach ($binary in @('calendar-desktop.exe', 'calendar-backend.exe')) {
     Copy-Item -LiteralPath (Join-Path $PWD "target/$Profile/$binary") -Destination $packageDirectory
 }
 
-Copy-Item -LiteralPath 'scripts/run-portable.ps1' -Destination (Join-Path $packageDirectory 'Run-Calendar.ps1')
+Copy-Item -LiteralPath 'scripts/windows/run-portable.ps1' -Destination (Join-Path $packageDirectory 'Run-Calendar.ps1')
+Copy-Item -LiteralPath 'scripts/run-portable.sh' -Destination (Join-Path $packageDirectory 'Run-Calendar.sh')
 Copy-Item -LiteralPath '.env.example','LICENSE','README.md','CONTRIBUTING.md' -Destination $packageDirectory
 Copy-Item -LiteralPath 'docs' -Destination $packageDirectory -Recurse
 

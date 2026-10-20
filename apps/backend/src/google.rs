@@ -110,6 +110,10 @@ pub struct GoogleAuth {
 }
 
 fn config() -> Option<Config> {
+    // The container preview has no hosted OAuth callback or persistent server vault.
+    if std::env::var("CALENDAR_PRIVATE_SERVER").as_deref() == Ok("true") {
+        return None;
+    }
     let values: HashMap<_, _> = dotenvy::from_path_iter(".env")
         .map(|values| values.filter_map(Result::ok).collect())
         .unwrap_or_default();

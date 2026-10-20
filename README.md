@@ -4,9 +4,11 @@ A cross-platform Google Calendar app, vibe-coded with GPT-6 Astra.
 
 Bring your Google calendars together, plan your week, and keep upcoming events close at hand. Calendar pairs a compact desktop calendar with a mobile month-and-agenda view and a web app.
 
+[Website](https://cal.hibatillah.com) · [Downloads](https://cal.hibatillah.com/download) · [Releases](https://github.com/hibatillah/calendar/releases)
+
 ## One calendar, across platforms
 
-The desktop, web, and mobile apps work with the same Google accounts and calendars through a shared backend. Connect your Google account to access your schedule across platforms. Changes saved to Google Calendar are available to the other apps when they sync, so your events stay with your Google account.
+The desktop, web, and mobile apps share a backend for Google accounts and calendars. Changes saved to Google Calendar are available to the other apps when they sync, so your events stay with your Google account. Cross-platform access currently requires a development setup; hosted sign-in is still being built.
 
 | App     | Experience                                                                                                                   | Built with                            |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
@@ -27,9 +29,16 @@ All three apps use the same Rust/Axum GraphQL backend for Google account connect
 
 ## Project status
 
-Calendar is in active development. Windows desktop, web, and mobile previews are available for development and testing. macOS support is being prepared; iOS still needs physical-device verification. Public sign-up, signed releases, and offline editing are not ready yet.
+Calendar is in active development. The website is live, with desktop, mobile, and tray previews. The download page presents Windows, Android, and Web and reads available application files from the latest GitHub release.
 
-The preview currently requires a local setup and your own Google OAuth configuration. See [Contributing](CONTRIBUTING.md) for setup, preview builds, and development instructions.
+- **Windows:** MSI packaging installs the desktop app and its local backend together, with shortcuts and uninstall support. Configuration and cached calendars are kept separately from the installation. The MSI becomes downloadable once a release includes it; existing portable ZIP downloads remain available.
+- **Android:** preview APKs are distributed through GitHub releases.
+- **Web:** the landing page and browser calendar live in the same TanStack Start app on Vercel. The public calendar route explains the current setup limitation; hosted Google sign-in is not available yet.
+- **Apple platforms:** macOS build checks and iOS simulator builds remain in CI, but neither platform is advertised as a public download. Native macOS testing and physical iOS device verification are still needed.
+
+Backend container packaging is being prepared for GHCR and Coolify. This is an infrastructure preview, not a public account service: hosted authentication and per-user data isolation must be implemented before connecting it to the live web app.
+
+The calendar preview currently requires a local setup and your own Google OAuth configuration. Public sign-up, signed releases, and offline editing are not ready yet. See [Contributing](CONTRIBUTING.md) for setup, testing, and packaging, and the [hosting guide](docs/hosting.md) for backend deployment preparation.
 
 ## License
 

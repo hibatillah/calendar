@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
-Set-Location (Split-Path $PSScriptRoot -Parent)
+Set-Location (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent)
 
 $desktopPath = Join-Path $PWD 'target/debug/calendar-desktop.exe'
 $backendPath = Join-Path $PWD 'target/debug/calendar-backend.exe'

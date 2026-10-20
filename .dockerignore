@@ -1,0 +1,17 @@
+**
+!Cargo.toml
+!Cargo.lock
+!apps
+!apps/backend
+!apps/backend/**
+!apps/desktop
+!apps/desktop/Cargo.toml
+!crates
+!crates/**
+!assets
+!assets/graphiql
+!assets/graphiql/**
+**/.env*
+**/target
+**/.local
+**/*.db

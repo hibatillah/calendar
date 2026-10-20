@@ -38,7 +38,7 @@ Document GraphQL fields and arguments alongside their Rust definitions. Keep exa
 
 Use one statement per line. Separate imports from declarations, and separate functions, hooks, validation, side effects, and returns with a blank line. Keep related declarations together. Use explicit identifiers and extract coherent responsibilities rather than introducing one-line wrapper modules.
 
-Run `bun run format` (Oxfmt) for maintained TypeScript, JavaScript, CSS, HTML, JSON, YAML, TOML, GraphQL and Markdown; use `bun run format:check` in CI. Run `bun run lint` (Oxlint) for the TypeScript/JavaScript workspace and `bun run typecheck` separately. Mobile uses the same root lint configuration. Run `./scripts/cargo.ps1 fmt --all` for Rust. Keep PowerShell statements in readable logical groups and validate scripts with the PowerShell parser. Generated operation types, route trees, GraphQL SDL, native projects, assets and build outputs are excluded from manual formatting. Oxfmt preserves logical blank lines but does not decide where they belong; review those boundaries explicitly.
+Run `bun run format` (Oxfmt) for maintained TypeScript, JavaScript, CSS, HTML, JSON, YAML, TOML, GraphQL and Markdown; use `bun run format:check` in CI. Run `bun run lint` (Oxlint) for the TypeScript/JavaScript workspace and `bun run typecheck` separately. Mobile uses the same root lint configuration. Run `bash scripts/cargo.sh fmt --all` for Rust. Keep PowerShell statements in readable logical groups and validate scripts with the PowerShell parser. Generated operation types, route trees, GraphQL SDL, native projects, assets and build outputs are excluded from manual formatting. Oxfmt preserves logical blank lines but does not decide where they belong; review those boundaries explicitly.
 
 Oxlint uses correctness rules with TypeScript and React support, including hook rules and dependency checks. It replaces the Expo ESLint preset rather than reproducing every Expo-specific rule. Rust source remains covered by rustfmt and Clippy. Both Oxc tools use small root JSON configs; keep generated and bundled files excluded.
 
@@ -78,46 +78,54 @@ See [architecture](docs/architecture.md) for ownership boundaries, [web developm
 
 ## Run locally
 
-Prerequisites: Rust's MSVC toolchain, Visual Studio C++ Build Tools, Windows SDK, and PowerShell 7. The helper chooses MSVC without changing your default Rust installation.
+Use Bash entry points from Git Bash on Windows or a Bash terminal on macOS/Linux. Windows builds still require Rust's MSVC toolchain, Visual Studio C++ Build Tools, Windows SDK, and PowerShell 7 on PATH. The Windows helpers in `scripts/windows/` initialize MSVC and handle native processes and installers; Bash forwards arguments and exit codes to them. PowerShell is not required by the Unix Cargo path.
 
-```powershell
-./scripts/start.ps1
+WSL runs Linux binaries, not the Windows desktop build. Use Git Bash to build the native Windows app. Linux backend development and Docker hosting are supported workflows; Linux desktop support is not a release target. macOS requires Xcode tools and still needs native verification. The Unix desktop runner also requires `curl` and refuses to start over an existing backend on port 47821.
+
+```bash
+bash scripts/start.sh
 ```
 
 The script builds both applications, starts the backend at `127.0.0.1:47821`, and opens the desktop. For separate terminals:
 
-```powershell
-./scripts/cargo.ps1 run -p calendar-backend
-./scripts/cargo.ps1 run -p calendar-desktop
+```bash
+bash scripts/cargo.sh run -p calendar-backend
+bash scripts/cargo.sh run -p calendar-desktop
 ```
 
 For automatic GPUI rebuild/restart during development:
 
-```powershell
-./scripts/dev-desktop.ps1
+```bash
+bash scripts/dev-desktop.sh
 ```
 
-The watcher debounces changes to Rust sources, Cargo manifests and bundled assets. It builds incrementally, keeps the last working app open when compilation fails, and restarts only binaries whose contents changed. Backend-only changes do not restart the desktop. Changes saved during compilation trigger another build. A one-time handoff moves any existing debug processes to copies in `.local/dev-desktop/`, releasing Windows executable locks while preserving Cargo's warm cache. Run only one watcher per checkout; avoid `start.ps1` or concurrent Cargo builds while it is active.
+The watcher debounces changes to Rust sources, Cargo manifests and bundled assets. It builds incrementally, keeps the last working app open when compilation fails, and restarts only binaries whose contents changed. Backend-only changes do not restart the desktop. Changes saved during compilation trigger another build. On Windows, a one-time handoff moves existing debug processes to copies in `.local/dev-desktop/`, releasing executable locks while preserving Cargo's warm cache. Run only one watcher per checkout; avoid `start.sh` or concurrent Cargo builds while it is active.
 
-This is automatic rebuild/restart, not in-process hot reload: saved settings, accounts and caches survive, but unsaved forms, scroll position and transient UI state reset. Avoid saving source while an event write is pending. Ctrl+C stops watching and leaves the apps running. `-Once` builds/restarts once for validation. PowerShell 7 is also usable on macOS, but this watcher has only been exercised on Windows.
+This is automatic rebuild/restart, not in-process hot reload: saved settings, accounts and caches survive, but unsaved forms, scroll position and transient UI state reset. Avoid saving source while an event write is pending. Use `--once` for one build. On Windows, Ctrl+C stops watching and leaves the apps running. On Unix, the shell owns its child processes: Ctrl+C stops them, and `--once` stays attached until the desktop exits. Native macOS behavior remains unverified.
 
 Run commands from the repository root. State and logs go into ignored `.local/`. Protected API endpoints requires the local token in `.local/session-token`; it is not intended to be exposed to the network. There is no hosted backend. Optional PostHog uploads are disabled until explicitly configured; see [telemetry](docs/telemetry.md).
 
 ## Checks
 
-```powershell
-./scripts/cargo.ps1 fmt --all '--' --check
-./scripts/cargo.ps1 test --workspace --features calendar-desktop/ui-tests
-./scripts/cargo.ps1 clippy --workspace --all-targets --features calendar-desktop/ui-tests '--' '-D' warnings
+```bash
+bash scripts/cargo.sh fmt --all '--' --check
+bash scripts/cargo.sh test --workspace --features calendar-desktop/ui-tests
+bash scripts/cargo.sh clippy --workspace --all-targets --features calendar-desktop/ui-tests '--' '-D' warnings
 ```
 
 GPUI tests run against a test window, without operating your desktop. Native appearance, tray placement and pointer hit targets still need runtime inspection. macOS boundaries exist, but no macOS build has been verified here.
+
+Run `bash scripts/test-dev-desktop.sh` for watcher checks and `bash scripts/test-shell-startup.sh` for isolated port-collision and startup-failure tests. Validate shell syntax with `bash -n scripts/<name>.sh`; Windows implementation helpers remain checked with the PowerShell parser. Run MSI and portable packaging entry points from Git Bash on Windows. Their options retain the native helper names (`-Profile release`, `-Version 1.10.1`).
 
 ## Downloads and CI
 
 GitHub Actions runs regular checks on every pull request and manual check-workflow run. PRs targeting `main` also build the applications. After a merge to `main`, the Release workflow calls the same check/build workflows for the exact merged commit and publishes only when all succeed. The Windows release build is uploaded as the `calendar-windows-x64-<commit>` artifact for 14 days. Download it from the workflow run and extract both ZIP layers if GitHub wraps the portable ZIP.
 
-The portable package contains both executables. Copy `.env.example` to `.env`, configure your own Desktop OAuth credentials as described in [Google setup](docs/google.md), and run `Run-Calendar.ps1` with PowerShell. Keep the package in a writable folder. It requires neither Rust nor Visual Studio; the local backend remains on port 47821. These are unsigned preview builds, not signed installers. No account credentials, telemetry token or local calendar cache is packaged.
+The MSI installs both executables in Program Files, creates Start-menu and desktop shortcuts, and registers with Windows Settings → Apps for repair/uninstall. The Start menu also includes an uninstall shortcut. Its hidden launcher starts the local backend and stops that backend after the desktop exits. Configuration and caches live under `%LOCALAPPDATA%\Calendar`; edit the `.env` there for [Google setup](docs/google.md). Uninstall removes application files and shortcuts but deliberately preserves user data and OS-vault credentials. Disconnect accounts in Settings before uninstalling if you want to revoke access.
+
+The portable ZIP remains available. Copy `.env.example` to `.env`, configure Desktop OAuth, and run `bash Run-Calendar.sh` from Git Bash. It invokes the bundled Windows PowerShell launcher; users without Bash can run `Run-Calendar.ps1` directly. The MSI's shortcuts invoke Windows PowerShell automatically and do not require Bash or PowerShell 7. Keep the portable directory writable. Installed and portable copies should not run together because they use the same loopback port 47821. Neither requires Rust or Visual Studio. Both are unsigned previews; no credentials, telemetry token, or calendar cache is packaged.
+
+MSI authoring is in `installer/windows/Calendar.wxs`. Install .NET SDK 8, then `dotnet tool install --global wix --version 6.0.2` and `wix extension add --global WixToolset.UI.wixext/6.0.2`. After building the executables, run `bash scripts/package-windows.sh` and `bash scripts/package-msi.sh -Version 1.10.1`. Use increasing three-part MSI versions for upgrades; CI derives its version from UTC year/month/minute-of-month. `scripts/test-msi.sh` installs/uninstalls only in disposable CI runners and verifies shortcuts and data preservation. Close Calendar before installing upgrades or uninstalling.
 
 After the bootstrap commit, changes go through feature branches and PRs with passing CI. Regular checks cover formatting, Rust/GPUI tests, Clippy, generated GraphQL contracts, TypeScript, linting, shared date tests, and web/mobile browser interactions. PRs into feature branches skip application packaging. PRs into `main` and post-merge release runs build the web production output, export mobile bundles, and package Windows executables, Android preview APKs, and unsigned iOS simulator archives. Test-related compilation still runs wherever the tests require it.
 
@@ -157,10 +165,11 @@ Release notes use GitHub's generated PR notes and `.github/release.yml` categori
 | Asset                           | Purpose                                                                                         |
 | ------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `calendar-windows-x64.zip`      | Unsigned portable desktop and backend, launch script, setup docs, and license files             |
+| `calendar-windows-x64.msi`      | Unsigned Windows installer, bundled backend, shortcuts, upgrades and standard uninstall         |
 | `calendar-android-preview.apk`  | Android developer preview using the generated project's preview signing configuration           |
 | `calendar-ios-simulator.tar.gz` | Unsigned Xcode simulator app; not installable on a physical iPhone                              |
 | `calendar-web-build.tar.gz`     | Web client/server build output for developers; not a standalone installer or a deployed website |
-| `SHA256SUMS.txt`                | Checksums of the four build files                                                               |
+| `SHA256SUMS.txt`                | Checksums of all application build files                                                        |
 
 The `/download` page and landing download section request the public Releases API, include prereleases, and select the highest published `preview-N` number so an older slow build cannot replace a newer build on the website. Successful lookups are cached in the browser session for five minutes. Only uploaded, nonempty assets with the expected repository URL get download links. Empty releases and API failures show an honest unavailable state with a GitHub Releases fallback. No token is shipped to the browser. Downloads themselves are public release files and do not depend on expiring Actions artifacts.
 

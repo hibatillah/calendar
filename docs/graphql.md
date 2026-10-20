@@ -1,6 +1,6 @@
 # GraphQL guide
 
-Run `./scripts/start.ps1`, then open http://127.0.0.1:47821/docs. Enter the value from `.local/session-token` and click **Connect**. Use the **Docs** panel to browse the schema and the play button to run an operation. The PostHog token stays in `.env`; never put it in this page.
+Run `bash scripts/start.sh`, then open http://127.0.0.1:47821/docs. Enter the value from `.local/session-token` and click **Connect**. Use the **Docs** panel to browse the schema and the play button to run an operation. The PostHog token stays in `.env`; never put it in this page.
 
 GraphQL's schema is the API reference: types, fields, inputs and argument descriptions are exposed through introspection. In this repository, `///` comments and `#[graphql(desc = "...")]` argument annotations generate those descriptions. The same documentation is exported in `contracts/graphql/schema.graphql` and served publicly at `/schema.graphql`. Introspection through `/graphql` requires authentication. No calendar data or credentials appear in the public SDL.
 

@@ -1,5 +1,5 @@
 .product-preview {
-  height: 470px;
+  height: 650px;
   display: flex;
   text-align: left;
   color: var(--calendar-foreground);
@@ -148,7 +148,7 @@
 .preview-today-control {
   font-size: 10px;
 }
-.preview-main h2 {
+.marketing-page .preview-main h2 {
   font-size: 23px;
   letter-spacing: -0.8px;
   padding: 7px 18px 19px;
@@ -197,7 +197,7 @@
   display: flex;
   position: relative;
   flex: 1;
-  height: 360px;
+  height: 540px;
   background: repeating-linear-gradient(
     to bottom,
     transparent 0,
@@ -325,7 +325,7 @@
   border-radius: 39px;
   box-shadow: 0 20px 35px #41473640;
   padding: 10px 15px;
-  transform: translateY(35px) rotate(4deg);
+  flex-shrink: 0;
 }
 .phone-status {
   display: flex;

@@ -1,0 +1,24 @@
+services:
+  backend:
+    image: ${CALENDAR_BACKEND_IMAGE:-ghcr.io/hibatillah/calendar-backend:main}
+    restart: unless-stopped
+    init: true
+    # Infrastructure preview only. Do not assign a public domain yet.
+    ports:
+      - "127.0.0.1:47821:47821"
+    volumes:
+      - calendar-data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 1
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  calendar-data:

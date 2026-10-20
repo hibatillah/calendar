@@ -1,4 +1,4 @@
-import { ArrowUpRight, Laptop, Smartphone } from "lucide-react";
+import { ArrowUpRight, Globe, Laptop, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   fetchDownloadRelease,
@@ -33,20 +33,11 @@ export function DownloadSection() {
     {
       key: "windows",
       title: "Windows",
-      label: "Download Windows ZIP",
-      buttonText: "Windows ZIP",
+      label: "Download Windows MSI",
+      buttonText: "Windows installer",
       icon: Laptop,
       description:
-        "Portable x64 preview with the local backend included. Unsigned; your own Google OAuth setup is required.",
-    },
-    {
-      key: "macos",
-      title: "macOS",
-      label: "",
-      buttonText: "",
-      icon: Laptop,
-      description:
-        "A native desktop calendar is in development. No macOS download yet.",
+        "Install the x64 desktop app and local backend, with shortcuts and standard Windows uninstall. Unsigned preview; Google OAuth setup is required.",
     },
     {
       key: "android",
@@ -58,13 +49,13 @@ export function DownloadSection() {
         "Installable preview for testing. Requires access to your local Calendar backend; not a Play Store release.",
     },
     {
-      key: "ios",
-      title: "iOS",
-      label: "Download iOS simulator build",
-      buttonText: "iOS simulator",
-      icon: Smartphone,
+      key: "web",
+      title: "Web",
+      label: "Open web calendar",
+      buttonText: "Open calendar",
+      icon: Globe,
       description:
-        "For the Xcode simulator on a Mac only. This does not install on an iPhone. TestFlight is not available yet.",
+        "Your calendar in the browser. Hosted Google sign-in is being prepared; the local web preview is available now.",
     },
   ] as const;
 
@@ -85,15 +76,15 @@ export function DownloadSection() {
       <div className="platform-grid">
         {platforms.map((platform) => {
           const downloadUrl =
-            platform.key === "macos" ? undefined : release?.assets[platform.key];
+            platform.key === "web" ? "/app" : release?.assets[platform.key];
 
           return (
             <article key={platform.key}>
               <platform.icon />
               <h3>{platform.title}</h3>
               <span className={`platform-status${downloadUrl ? " available" : ""}`}>
-                {platform.key === "ios"
-                  ? "Simulator only"
+                {platform.key === "web"
+                  ? "In development"
                   : downloadUrl
                     ? "Developer preview"
                     : "Not available yet"}
@@ -117,6 +108,12 @@ export function DownloadSection() {
         <a href={release?.url ?? `${repositoryUrl}/releases`}>
           Release notes and all files
         </a>
+        {release?.assets.windowsPortable && (
+          <>
+            {" "}
+            · <a href={release.assets.windowsPortable}>Windows portable ZIP</a>
+          </>
+        )}
         {release?.assets.checksums && (
           <>
             {" "}

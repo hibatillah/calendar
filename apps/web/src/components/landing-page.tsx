@@ -9,7 +9,7 @@ import {
   Plus,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "../landing.css";
 import { PhonePreview, ProductPreview, useInteractiveReady } from "./product-previews";
 import { Button } from "./ui/button";
@@ -22,45 +22,56 @@ const repository = "https://github.com/hibatillah/calendar";
 export function MarketingNav() {
   const interactiveReady = useInteractiveReady();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const updateScroll = () => setScrolled(window.scrollY > 24);
+
+    updateScroll();
+    window.addEventListener("scroll", updateScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateScroll);
+  }, []);
 
   return (
-    <header className="marketing-nav">
-      <a href="/" className="calendar-wordmark" aria-label="Calendar home">
-        <CalendarDays size={25} strokeWidth={1.8} />
-        Calendar
-      </a>
-      <nav
-        aria-label="Main navigation"
-        className={menuOpen ? "marketing-links is-open" : "marketing-links"}
-      >
-        <a href="/#features" onClick={() => setMenuOpen(false)}>
-          Features
+    <div className="marketing-nav-space">
+      <header className={`marketing-nav${scrolled ? " is-floating" : ""}`}>
+        <a href="/" className="calendar-wordmark" aria-label="Calendar home">
+          Calendar
         </a>
-        <a href="/download" onClick={() => setMenuOpen(false)}>
-          Download
-        </a>
-        <a href={`${repository}/releases`}>
-          Changelog <ArrowUpRight size={12} />
-        </a>
-      </nav>
-      <div className="marketing-nav-actions">
-        <a href="/app" className="open-app-link">
-          Open calendar <ArrowUpRight size={14} />
-        </a>
-        <Button asChild className="marketing-button">
-          <a href="/download">Get Calendar</a>
-        </Button>
-        <button
-          className="mobile-menu-button"
-          disabled={!interactiveReady}
-          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen(!menuOpen)}
+        <nav
+          aria-label="Main navigation"
+          className={menuOpen ? "marketing-links is-open" : "marketing-links"}
         >
-          {menuOpen ? <X /> : <Menu />}
-        </button>
-      </div>
-    </header>
+          <a href="/#features" onClick={() => setMenuOpen(false)}>
+            Features
+          </a>
+          <a href="/download" onClick={() => setMenuOpen(false)}>
+            Download
+          </a>
+          <a href={`${repository}/releases`}>
+            Changelog <ArrowUpRight size={12} />
+          </a>
+        </nav>
+        <div className="marketing-nav-actions">
+          <a href="/app" className="open-app-link">
+            Open calendar <ArrowUpRight size={14} />
+          </a>
+          <Button asChild className="marketing-button">
+            <a href="/download">Get Calendar</a>
+          </Button>
+          <button
+            className="mobile-menu-button"
+            disabled={!interactiveReady}
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
+      </header>
+    </div>
   );
 }
 
@@ -68,7 +79,6 @@ export function MarketingFooter() {
   return (
     <footer className="marketing-footer">
       <a className="calendar-wordmark" href="/">
-        <CalendarDays size={21} />
         Calendar
       </a>
       <span>A little room for your time.</span>
@@ -97,9 +107,7 @@ export function LandingPage() {
             <i /> A new space for your Google calendars <ArrowRight size={12} />
           </span>
           <h1>
-            Your week,
-            <br />
-            <span>clearly.</span>
+            Your week, <span>clearly.</span>
           </h1>
           <p>
             Work, life, and the time in between.

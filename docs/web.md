@@ -1,6 +1,6 @@
 # Web development
 
-Use Bun 1.4.3 and Node 24 LTS. Run `bun install --frozen-lockfile`, start the Rust backend with `./scripts/start.ps1` (or the GPUI watcher), then run `bun run dev:web`. Open http://127.0.0.1:3000 for the landing page or http://127.0.0.1:3000/app for the calendar. Vite provides Fast Refresh. The production bundle is built with `bun run build`.
+Use Bun 1.4.3 and Node 24 LTS. Run `bun install --frozen-lockfile`, start the Rust backend with `bash scripts/start.sh` (or the GPUI watcher), then run `bun run dev:web`. Open http://127.0.0.1:3000 for the landing page or http://127.0.0.1:3000/app for the calendar. Vite provides Fast Refresh. The production bundle is built with `bun run build`.
 
 ## Local connection
 

@@ -51,12 +51,23 @@
   transform: translateY(-1px);
 }
 .landing-hero {
+  position: relative;
+  isolation: isolate;
   border-radius: 28px;
-  overflow: hidden;
+}
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 125px;
+  z-index: -1;
+  border-radius: inherit;
   background:
     radial-gradient(ellipse at 6% 49%, #ffffffc9 0%, transparent 24%),
     radial-gradient(ellipse at 98% 30%, #f3ffffd9, transparent 28%),
     linear-gradient(135deg, #c5eff0, #a9e2e9 46%, #dbeee1);
+}
+.marketing-nav-space {
+  height: 78px;
 }
 .marketing-nav {
   min-height: 78px;
@@ -66,7 +77,20 @@
   gap: 35px;
   justify-content: space-between;
   position: relative;
-  z-index: 5;
+  z-index: 30;
+}
+.marketing-nav.is-floating {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1120px, calc(100% - 40px));
+  min-height: 64px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid rgb(255 255 255 / 80%);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px #23352a12;
 }
 .calendar-wordmark {
   font-size: 23px;
@@ -122,6 +146,7 @@
   padding: 60px 20px 55px;
 }
 .preview-badge {
+  background: rgb(255 255 255 / 45%);
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -147,6 +172,11 @@
 .hero-copy h1 span {
   color: #3d675e;
 }
+.hero-copy h1 {
+  white-space: nowrap;
+  font-size: clamp(30px, 6.2vw, 88px);
+  letter-spacing: -0.055em;
+}
 .hero-copy p {
   font-size: 17px;
   line-height: 1.65;
@@ -164,6 +194,9 @@
   padding-inline: 23px;
 }
 .hero-secondary {
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 50%);
+  padding: 13px 21px;
   font-size: 13px;
   display: inline-flex;
   align-items: center;
@@ -179,6 +212,8 @@
   margin: 0 auto;
   max-width: 1110px;
   padding: 0 30px;
+  height: 520px;
+  overflow: hidden;
 }
 .hero-preview-caption {
   max-width: 1050px;
@@ -196,7 +231,7 @@
 .landing-intro {
   text-align: center;
   padding: 110px 20px 65px;
-  scroll-margin-top: 20px;
+  scroll-margin-top: 90px;
 }
 .section-eyebrow {
   font-size: 9px;
@@ -422,9 +457,11 @@
 .phone-stage {
   position: relative;
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: center;
-  padding-top: 55px;
+  height: 387px;
+  align-self: end;
+  overflow: hidden;
 }
 .phone-orbit {
   width: 500px;
@@ -491,7 +528,7 @@
 }
 .platform-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
   margin-top: 40px;
   text-align: left;
@@ -682,7 +719,7 @@
     gap: 40px;
   }
   .platform-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
   .preview-sidebar {
     width: 175px;
@@ -699,6 +736,15 @@
     padding: 15px;
     gap: 12px;
     min-height: 68px;
+  }
+  .marketing-nav-space {
+    height: 68px;
+  }
+  .marketing-nav.is-floating {
+    width: calc(100% - 24px);
+    top: 10px;
+    min-height: 60px;
+    padding: 10px 16px;
   }
   .calendar-wordmark {
     font-size: 21px;
@@ -742,6 +788,10 @@
     letter-spacing: -3px;
     font-size: 64px;
   }
+  .hero-copy h1 {
+    font-size: clamp(28px, 7.8vw, 54px);
+    letter-spacing: -0.055em;
+  }
   .hero-copy p {
     font-size: 13px;
   }
@@ -762,13 +812,13 @@
   .hero-product {
     padding: 0 14px;
     overflow: hidden;
+    height: 343px;
   }
   .product-preview {
     width: 750px;
-    height: 370px;
+    height: 650px;
     transform: scale(0.66);
     transform-origin: top left;
-    margin-bottom: -126px;
   }
   .preview-sidebar {
     width: 160px;
@@ -832,11 +882,11 @@
     font-size: 13px;
   }
   .phone-stage {
-    height: 525px;
+    height: 387px;
     padding: 0;
   }
   .phone-preview {
-    transform: translateY(70px) rotate(3deg);
+    transform: none;
   }
   .phone-orbit {
     top: 25px;
@@ -876,6 +926,7 @@
   }
   .platform-grid {
     gap: 10px;
+    grid-template-columns: 1fr;
   }
   .platform-grid article {
     padding: 20px 14px;

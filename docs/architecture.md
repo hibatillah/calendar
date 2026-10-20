@@ -44,7 +44,7 @@ Still required: incremental sync and invalidation recovery, series-wide recurrin
 
 Desktop `app.rs` owns state and lifecycle; `app/shell.rs` composes the window. `app/navigation.rs`, `gestures.rs`, `editor.rs`, `timeline.rs`, `sidebar.rs`, `settings.rs` and `agenda.rs` own their corresponding interactions and rendering. Shared element builders live in `controls.rs`; headless interaction tests are in `app/tests.rs`.
 
-Web `use-calendar-controller.ts` owns query state and actions. `calendar-app.tsx` composes `calendar-sidebar`, `mini-calendar`, `week-calendar`, `month-calendar`, `calendar-settings` and `event-editor`. Browser snapshot storage has a separate module. Marketing illustrations and their styles live in `product-previews.tsx` and `product-previews.css`, separate from page content.
+Web `use-calendar-controller.ts` owns query state and actions. `calendar-app.tsx` composes `calendar-sidebar`, `mini-calendar`, `week-calendar`, `month-calendar`, `calendar-settings` and `event-editor`. Browser snapshot storage has a separate module. Marketing illustrations and their Tailwind utilities live in `product-previews.tsx`, separate from page content. Shared marketing utility strings live in `lib/marketing-styles.ts`; `styles.css` is the single Tailwind entry point for fonts, theme tokens and base defaults.
 
 Mobile `use-mobile-calendar.ts` owns connection, query, preference and reminder state. `calendar-screen.tsx` composes the month, agenda and sheets; `mobile-month`, `mobile-settings` and `mobile-editor` own their views. `components.tsx` contains shared native controls. Platform-specific persistence, native date fields and notification adapters retain their existing `.native.ts` resolution.
 

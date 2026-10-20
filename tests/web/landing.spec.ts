@@ -23,6 +23,21 @@ test("landing demo works without accessing a connected calendar", async ({ page 
   await expect(page.locator(".preview-large-month > div").last()).toHaveText("1");
   await page.getByRole("button", { name: "Week", exact: true }).click();
   await expect(page.locator(".preview-event").first()).toBeVisible();
+
+  const planningBounds = await page
+    .getByRole("button", { name: "A little planning 09:00 – 10:00" })
+    .boundingBox();
+  const coffeeBounds = await page
+    .getByRole("button", { name: "Coffee with Maya 09:30 – 10:30" })
+    .boundingBox();
+  const lunchBounds = await page
+    .getByRole("button", { name: "Lunch, unhurried 12:00 – 13:00" })
+    .boundingBox();
+
+  expect(coffeeBounds!.y - planningBounds!.y).toBeCloseTo(30, 0);
+  expect(lunchBounds!.y - planningBounds!.y).toBeCloseTo(180, 0);
+  expect(lunchBounds!.x).toBeCloseTo(coffeeBounds!.x, 0);
+
   expect(calendarRequests).toEqual([]);
   await expect(
     page.getByRole("link", { name: "Get the Windows preview" }),

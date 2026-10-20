@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { type EventRecord } from "@calendar/api";
 import {
   clockTime,
@@ -22,30 +23,48 @@ export function WeekCalendar({ state }: { state: CalendarController }) {
   } = state;
 
   return (
-    <div className="week-scroller" ref={timelineScrollRef}>
-      <div className="week-canvas">
-        <div className="week-heading">
+    <div
+      className="week-scroller flex-1 overflow-auto overscroll-contain relative"
+      ref={timelineScrollRef}
+    >
+      <div className="week-canvas min-w-212.5 relative">
+        <div className="week-heading grid grid-cols-[62px_repeat(7,_minmax(0,_1fr))] sticky top-0 bg-background z-[4]">
           <div className="text-[10px] text-muted-foreground pt-3 pl-3">GMT+7</div>
           {visibleDates.map((date) => (
-            <div className="day-heading" key={date}>
+            <div
+              className="day-heading text-center h-10 text-muted-foreground p-[10px_0]"
+              key={date}
+            >
               {dayLabel(date).split(" ")[0]}{" "}
-              <span className={`p-1.5 ${date === today ? "today" : ""}`}>
+              <span
+                className={`p-1.5 ${date === today ? "today bg-[#fa5353]! text-[white]! rounded-[6px]" : ""}`}
+              >
                 {Number(date.slice(-2))}
               </span>
             </div>
           ))}
-          <div className="all-day text-[10px] text-muted-foreground pl-3 pt-2">
+          <div className="all-day min-h-7.5 [border-bottom:1px_solid_var(--calendar-secondary)] text-[10px] text-muted-foreground pl-3 pt-2">
             All-day
           </div>
           {visibleDates.map((date) => (
-            <div className="all-day" key={date}>
+            <div
+              className="all-day min-h-7.5 [border-bottom:1px_solid_var(--calendar-secondary)]"
+              key={date}
+            >
               {eventsOnDay(events, date)
                 .filter((event) => event.allDay)
                 .map((event) => (
                   <button
                     key={event.eventId}
-                    className="month-event"
-                    style={{ borderColor: eventColor(event.color) }}
+                    className={`
+                      month-event block w-full text-left p-[3px_5px] border-l-[4px] border-solid rounded-[4px] mt-[3px]
+                      whitespace-nowrap overflow-hidden text-ellipsis text-[11px] border-[var(--calendar-border-color)]
+                    `}
+                    style={
+                      {
+                        "--calendar-border-color": eventColor(event.color),
+                      } as CSSProperties
+                    }
                     onClick={() => openEvent(event)}
                   >
                     {event.title}
@@ -54,10 +73,10 @@ export function WeekCalendar({ state }: { state: CalendarController }) {
             </div>
           ))}
         </div>
-        <div className="time-grid">
-          <div className="time-axis">
+        <div className="time-grid grid grid-cols-[62px_repeat(7,_minmax(0,_1fr))]">
+          <div className="time-axis text-muted-foreground text-[10px] text-right pr-2">
             {Array.from({ length: 24 }, (_, hour) => (
-              <div className="hour-label" key={hour}>
+              <div className="hour-label h-15 relative top-[-7px]" key={hour}>
                 {String(hour).padStart(2, "0")}:00
               </div>
             ))}
@@ -65,7 +84,10 @@ export function WeekCalendar({ state }: { state: CalendarController }) {
           {visibleDates.map((date) => (
             <div
               key={date}
-              className="day-column"
+              className={`
+                day-column h-360 relative [border-left:1px_solid_var(--calendar-surface)]
+                [background:repeating-linear-gradient(_to_bottom,_transparent_0px,_transparent_59px,_var(--calendar-grid)_59px,_var(--calendar-grid)_60px_)]
+              `}
               onDoubleClick={(event) => {
                 if (event.target !== event.currentTarget) return;
 
@@ -126,20 +148,28 @@ export function WeekCalendar({ state }: { state: CalendarController }) {
               {timedPlacement(events, date).map((placement) => (
                 <button
                   key={placement.event.eventId}
-                  className="event-card"
+                  className={`
+                    event-card flex flex-col items-start justify-start absolute border-l-[4px] border-solid rounded-[5px]
+                    p-[5px_7px] overflow-hidden text-left text-[11px] leading-[1.35] [&_strong]:block
+                    [&_strong]:font-semibold top-[var(--calendar-top)] h-[var(--calendar-height)]
+                    left-[var(--calendar-left)] w-[var(--calendar-width)] border-[var(--calendar-border-color)]
+                    bg-[var(--calendar-background)]
+                  `}
                   draggable={!placement.event.readOnly && !calendar.save.isPending}
                   onDragStart={(event) =>
                     event.dataTransfer.setData("text/plain", placement.event.eventId)
                   }
                   onClick={() => openEvent(placement.event as EventRecord)}
-                  style={{
-                    top: placement.top,
-                    height: placement.height,
-                    left: `${placement.left}%`,
-                    width: `calc(${placement.width}% - 5px)`,
-                    borderColor: eventColor(placement.event.color),
-                    background: `color-mix(in srgb, ${eventColor(placement.event.color)} 24%, var(--calendar-surface))`,
-                  }}
+                  style={
+                    {
+                      "--calendar-top": `${placement.top}px`,
+                      "--calendar-height": `${placement.height}px`,
+                      "--calendar-left": `${placement.left}%`,
+                      "--calendar-width": `calc(${placement.width}% - 5px)`,
+                      "--calendar-border-color": eventColor(placement.event.color),
+                      "--calendar-background": `color-mix(in srgb, ${eventColor(placement.event.color)} 24%, var(--calendar-surface))`,
+                    } as CSSProperties
+                  }
                 >
                   <strong>{placement.event.title}</strong>
                   <span className="opacity-70">
@@ -147,7 +177,7 @@ export function WeekCalendar({ state }: { state: CalendarController }) {
                   </span>
                   {!placement.event.readOnly && (
                     <span
-                      className="resize-handle"
+                      className="resize-handle h-2 absolute bottom-0 left-0 right-0 cursor-ns-resize"
                       onPointerDown={(pointer) => {
                         pointer.preventDefault();
                         pointer.stopPropagation();

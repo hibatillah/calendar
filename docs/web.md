@@ -2,6 +2,10 @@
 
 Use Bun 1.4.3 and Node 24 LTS. Run `bun install --frozen-lockfile`, start the Rust backend with `bash scripts/start.sh` (or the GPUI watcher), then run `bun run dev:web`. Open http://127.0.0.1:3000 for the landing page or http://127.0.0.1:3000/app for the calendar. Vite provides Fast Refresh. The production bundle is built with `bun run build`.
 
+## Styling
+
+Use Tailwind utilities for all web layouts, components, responsive states and illustrations. Keep `src/styles.css` as the only stylesheet: Tailwind import, Inter font, theme tokens and base defaults using `@apply`. Share recurring utility combinations through components or `src/lib/marketing-styles.ts`. Runtime event placement and calendar colors use typed CSS custom properties consumed by static Tailwind classes; do not construct utility names from runtime values. Existing semantic class names also serve as interaction-test hooks.
+
 ## Local connection
 
 The development-only Vite bridge forwards same-origin POST requests to the loopback Axum backend. It reads `.local/session-token` on the server; the token is never included in browser assets. Host and Origin must both match `127.0.0.1:3000`. Keep Vite bound to loopback. Google OAuth runs against the existing desktop OAuth client and callback on this computer. Add/reconnect/disconnect accounts through Settings. No fake events are seeded.

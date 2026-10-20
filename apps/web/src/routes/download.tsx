@@ -1,3 +1,4 @@
+import { marketingPageClasses } from "@/lib/marketing-styles";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   DownloadSection,
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/download")({
 
 function Downloads() {
   return (
-    <main className="marketing-page download-page">
+    <main className={`${marketingPageClasses} download-page`}>
       <MarketingNav />
       <DownloadSection />
       <MarketingFooter />

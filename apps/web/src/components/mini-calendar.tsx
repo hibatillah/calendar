@@ -41,7 +41,7 @@ export function MiniCalendar({ state }: { state: CalendarController }) {
           </Button>
         </div>
       </div>
-      <div className="mini-grid">
+      <div className="mini-grid grid grid-cols-7 gap-[2px_0] [&_button]:h-[31px] [&_button]:rounded-[6px] [&_button]:text-[12px]">
         {Array.from({ length: 7 }, (_, index) => (
           <span
             key={index}
@@ -55,7 +55,7 @@ export function MiniCalendar({ state }: { state: CalendarController }) {
             key={date}
             aria-label={date}
             aria-pressed={visibleDates.includes(date)}
-            className={`${visibleDates.includes(date) ? "selected" : ""} ${date === today ? "today" : ""} ${date.slice(0, 7) !== selectedDate.slice(0, 7) ? "muted" : ""}`}
+            className={`${visibleDates.includes(date) ? "selected bg-selected" : ""} ${date === today ? "today bg-[#fa5353]! text-[white]! rounded-[6px]" : ""} ${date.slice(0, 7) !== selectedDate.slice(0, 7) ? "muted text-muted-foreground" : ""}`}
             onClick={() => {
               setSelectedDate(date);
               setFirstDay(date);

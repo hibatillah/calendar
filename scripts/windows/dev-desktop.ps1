@@ -6,7 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repositoryRoot = Split-Path $PSScriptRoot -Parent
+$repositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
 function Get-SourceSnapshot {
     param([string]$Root)

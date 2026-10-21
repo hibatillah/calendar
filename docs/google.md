@@ -15,7 +15,7 @@ GOOGLE_CLIENT_SECRET=your-desktop-client-secret
 
 Keep the existing PostHog settings. Do not commit `.env` or paste credentials in chat. Desktop OAuth clients are public clients; the client secret is a Google configuration requirement, not proof of app identity. PKCE protects the authorization code.
 
-4. Restart with `./scripts/start.ps1`. Open the profile circle, then **Settings → Google accounts → Add Google account**. Complete consent in your browser.
+4. Restart with `bash scripts/start.sh`. Open the profile circle, then **Settings → Google accounts → Add Google account**. Complete consent in your browser.
 
 The callback binds a temporary random port on `127.0.0.1`; Desktop clients support this without manually configuring a web redirect URI. Sign-in expires after five minutes. **Cancel sign-in** clears the pending flow. **Disconnect Google** removes the local credential and attempts to revoke the grant; if Google is unreachable the app explains how to revoke access in your Google account.
 

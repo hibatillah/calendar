@@ -1,12 +1,22 @@
 # Web development
 
-Use Bun 1.4.3 and Node 24 LTS. Run `bun install --frozen-lockfile`, start the Rust backend with `./scripts/start.ps1` (or the GPUI watcher), then run `bun run dev:web`. Open http://127.0.0.1:3000 for the landing page or http://127.0.0.1:3000/app for the calendar. Vite provides Fast Refresh. The production bundle is built with `bun run build`.
+Use Bun 1.4.3 and Node 24 LTS. Run `bun install --frozen-lockfile`, start the Rust backend with `bash scripts/start.sh` (or the GPUI watcher), then run `bun run dev:web`. Open http://127.0.0.1:3000 for the landing page or http://127.0.0.1:3000/app for the calendar. Vite provides Fast Refresh. The production bundle is built with `bun run build`.
+
+## Styling
+
+Use Tailwind utilities for all web layouts, components, responsive states and illustrations. Keep `src/styles.css` as the only stylesheet: Tailwind import, Inter font, theme tokens and base defaults using `@apply`. Share recurring utility combinations through components or `src/lib/marketing-styles.ts`. Runtime event placement and calendar colors use typed CSS custom properties consumed by static Tailwind classes; do not construct utility names from runtime values. Existing semantic class names also serve as interaction-test hooks.
 
 ## Local connection
 
 The development-only Vite bridge forwards same-origin POST requests to the loopback Axum backend. It reads `.local/session-token` on the server; the token is never included in browser assets. Host and Origin must both match `127.0.0.1:3000`. Keep Vite bound to loopback. Google OAuth runs against the existing desktop OAuth client and callback on this computer. Add/reconnect/disconnect accounts through Settings. No fake events are seeded.
 
-This is a functioning local client, not a public deployment at cal.hibatillah.com. The production bundle intentionally has no local credential bridge. Public hosting requires user-scoped sessions, tenant isolation, a hosted database, encrypted provider credentials and web/mobile OAuth callbacks before deployment. Do not expose the desktop token or OS credential vault as a hosted authentication system.
+The landing page and downloads are hosted at `https://cal.hibatillah.com`. The production `/app` route explains that account access is currently available only in the local preview; it does not attempt to connect to a visitor's local backend. Public calendar access requires user-scoped sessions, tenant isolation, a hosted database, encrypted provider credentials and web/mobile OAuth callbacks. Do not expose the desktop token or OS credential vault as a hosted authentication system.
+
+## Vercel deployment
+
+The Vercel project is `calendar` under `hibatillahs-projects`, with Root Directory `apps/web`, the TanStack Start preset, Node 24, install command `bun install --frozen-lockfile`, and build command `bun run build`. Shared workspace sources outside the app directory must remain available. No Google credentials, local session tokens, or root `.env` values belong in this frontend deployment.
+
+The Nitro Vite adapter is enabled only when Vercel sets `VERCEL`; it produces Vercel functions and static assets. Ordinary local/CI builds keep their existing `dist/` output for GitHub release packaging. The custom subdomain uses a DNS-only Cloudflare CNAME pointing to the target provided by Vercel, with HTTPS managed by Vercel.
 
 ## Behavior
 

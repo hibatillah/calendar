@@ -1,0 +1,43 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="Calendar" Manufacturer="hibatillah" Version="$(var.ProductVersion)"
+           UpgradeCode="AA88641A-078C-443B-AD3C-259B25A04D99" Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Calendar is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Property Id="ARPCOMMENTS" Value="Calendar desktop and local backend. User data is preserved when uninstalling." />
+    <Property Id="ARPURLINFOABOUT" Value="https://cal.hibatillah.com" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicensePath)" />
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Calendar" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="CalendarMenuFolder" Name="Calendar">
+        <Component Id="CalendarShortcuts" Guid="F1081173-2A78-4FC8-83F5-FE59DD84CC46">
+          <Shortcut Id="StartCalendar" Name="Calendar"
+                    Target="[System64Folder]WindowsPowerShell\v1.0\powershell.exe"
+                    Arguments="-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File &quot;[INSTALLFOLDER]Run-Calendar.ps1&quot;"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <Shortcut Id="CalendarSetup" Name="Calendar setup guide" Target="[INSTALLFOLDER]CONTRIBUTING.md" />
+          <Shortcut Id="UninstallCalendar" Name="Uninstall Calendar" Target="[System64Folder]msiexec.exe"
+                    Arguments="/x [ProductCode]" />
+          <RemoveFolder Id="RemoveCalendarMenu" On="uninstall" />
+          <RegistryValue Root="HKLM" Key="Software\Calendar" Name="Installed" Value="1" Type="integer" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="CalendarDesktopShortcut" Guid="0177766B-408F-42EE-A0D9-AE545E551CDB">
+        <Shortcut Id="DesktopCalendar" Name="Calendar"
+                  Target="[System64Folder]WindowsPowerShell\v1.0\powershell.exe"
+                  Arguments="-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File &quot;[INSTALLFOLDER]Run-Calendar.ps1&quot;"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKLM" Key="Software\Calendar" Name="DesktopShortcut" Value="1" Type="integer" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+    <Feature Id="CalendarApplication" Title="Calendar" Level="1">
+      <ComponentGroupRef Id="CalendarPayload" />
+      <ComponentRef Id="CalendarShortcuts" />
+      <ComponentRef Id="CalendarDesktopShortcut" />
+    </Feature>
+  </Package>
+</Wix>

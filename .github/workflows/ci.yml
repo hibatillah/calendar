@@ -13,6 +13,21 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  shell-checks:
+    name: Bash helpers (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+      - name: Watcher checks
+        run: bash scripts/test-dev-desktop.sh
+      - name: Backend startup failures
+        run: bash scripts/test-shell-startup.sh
+      - name: Verify native Cargo entry point
+        run: bash scripts/cargo.sh --version
+
   rust-checks:
     name: Rust checks (Windows)
     runs-on: windows-latest
@@ -26,16 +41,16 @@ jobs:
         run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
       - uses: Swatinem/rust-cache@v2
       - name: Format
-        run: ./scripts/cargo.ps1 fmt --all '--' --check
+        run: bash scripts/cargo.sh fmt --all '--' --check
       - name: Desktop watcher checks
-        run: ./scripts/test-dev-desktop.ps1
+        run: bash scripts/test-dev-desktop.sh
       - name: Tests including GPUI interactions
-        run: ./scripts/cargo.ps1 test --locked --workspace --features calendar-desktop/ui-tests
+        run: bash scripts/cargo.sh test --locked --workspace --features calendar-desktop/ui-tests
       - name: Clippy
-        run: ./scripts/cargo.ps1 clippy --locked --workspace --all-targets --features calendar-desktop/ui-tests '--' '-D' warnings
+        run: bash scripts/cargo.sh clippy --locked --workspace --all-targets --features calendar-desktop/ui-tests '--' '-D' warnings
 
   windows-desktop:
-    name: Windows portable build
+    name: Windows installer and portable build
     if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: rust-checks
     runs-on: windows-latest
@@ -51,13 +66,45 @@ jobs:
         with:
           shared-key: windows-release
       - name: Build desktop and local backend
-        run: ./scripts/cargo.ps1 build --locked --release --workspace
+        run: bash scripts/cargo.sh build --locked --release --workspace
       - name: Package portable application
-        run: ./scripts/package-windows.ps1
+        run: bash scripts/package-windows.sh
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Install WiX
+        run: |
+          dotnet tool install --global wix --version 6.0.2
+          wix extension add --global WixToolset.UI.wixext/6.0.2
+      - name: Build MSI installer
+        run: |
+          $timestamp = [DateTime]::UtcNow
+          $minuteOfMonth = ($timestamp.Day - 1) * 1440 + $timestamp.Hour * 60 + $timestamp.Minute
+          bash scripts/package-msi.sh -Version "$($timestamp.Year - 2025).$($timestamp.Month).$minuteOfMonth"
+      - name: Verify install and uninstall
+        run: bash scripts/test-msi.sh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: windows-installer-logs-${{ github.sha }}
+          path: dist/msi-*.log
       - uses: actions/upload-artifact@v4
         with:
           name: calendar-windows-x64-${{ github.sha }}
-          path: dist/calendar-windows-x64.zip
+          path: |
+            dist/calendar-windows-x64.zip
+            dist/calendar-windows-x64.msi
           if-no-files-found: error
           retention-days: 14
           overwrite: true
+
+  macos-desktop:
+    name: macOS desktop compile
+    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked -p calendar-desktop -p calendar-backend

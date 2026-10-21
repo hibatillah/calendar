@@ -1,7 +1,7 @@
 $CargoArguments = $args
 $ErrorActionPreference = 'Stop'
 
-Set-Location (Split-Path $PSScriptRoot -Parent)
+Set-Location (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent)
 
 if ($IsWindows) {
     $visualStudioLocator = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'

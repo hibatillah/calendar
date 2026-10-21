@@ -48,6 +48,7 @@ jobs:
           tar -czf release-assets/calendar-web-build.tar.gz -C web-artifact .
           cd release-assets
           test -s calendar-windows-x64.zip
+          test -s calendar-windows-x64.msi
           test -s calendar-android-preview.apk
           test -s calendar-ios-simulator.tar.gz
           test -s calendar-web-build.tar.gz

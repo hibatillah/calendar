@@ -28,7 +28,7 @@ export function CalendarSettings({ state }: { state: CalendarController }) {
 
   return (
     <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <DialogContent className="sm:max-w-[1000px] h-[min(720px,85vh)] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-250 h-[min(720px,85vh)] p-0 gap-0 overflow-hidden">
         <div className="flex min-h-0">
           <nav className="w-56 bg-secondary p-5 space-y-2">
             <p className="text-xs text-muted-foreground mb-5">Account</p>

@@ -12,7 +12,7 @@ POSTHOG_PROJECT_TOKEN=phc_REPLACE_WITH_PROJECT_TOKEN
 POSTHOG_HOST=https://us.i.posthog.com
 ```
 
-Use the project token from PostHog Project settings and the matching US host above or `https://eu.i.posthog.com`. Personal (`phx_`) and secret (`phs_`) keys are rejected. Restart both processes with `./scripts/start.ps1`. Set `POSTHOG_ENABLED=false` and restart to stop uploads. A token alone does not enable uploads.
+Use the project token from PostHog Project settings and the matching US host above or `https://eu.i.posthog.com`. Personal (`phx_`) and secret (`phs_`) keys are rejected. Restart both processes with `bash scripts/start.sh`. Set `POSTHOG_ENABLED=false` and restart to stop uploads. A token alone does not enable uploads.
 
 Both apps parse `.env` without mutating process environment. Existing environment variables override `.env`. If none of these three settings exists, legacy `.local/telemetry.json` is still accepted with `enabled`, `project_token`, and `host`. Invalid configuration fails closed; the Activity status explains the category without exposing values. Run from the repository root. Only PostHog Cloud US/EU hosts are accepted.
 

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { ChevronDown, CircleHelp, PanelLeft, SquarePen } from "lucide-react";
 import { MiniCalendar } from "./mini-calendar";
 import { Button } from "./ui/button";
@@ -19,7 +20,7 @@ export function CalendarSidebar({ state }: { state: CalendarController }) {
   } = state;
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar w-65 shrink-0 bg-sidebar p-[14px_12px] flex flex-col gap-5.5 max-[760px]:w-52.5">
       <div className="flex items-center justify-between">
         <div className="flex gap-1">
           <ChevronDown size={18} className="mt-2 text-muted-foreground" />
@@ -73,13 +74,15 @@ export function CalendarSidebar({ state }: { state: CalendarController }) {
                 aria-pressed={!hiddenCalendars.has(item.id)}
               >
                 <span
-                  className="h-3.5 w-3.5 shrink-0 rounded"
-                  style={{
-                    background: hiddenCalendars.has(item.id)
-                      ? "transparent"
-                      : item.backgroundColor,
-                    border: `1px solid ${item.backgroundColor}`,
-                  }}
+                  className="h-3.5 w-3.5 shrink-0 rounded bg-[var(--calendar-background)] [border:var(--calendar-border)]"
+                  style={
+                    {
+                      "--calendar-background": hiddenCalendars.has(item.id)
+                        ? "transparent"
+                        : item.backgroundColor,
+                      "--calendar-border": `1px solid ${item.backgroundColor}`,
+                    } as CSSProperties
+                  }
                 />
                 <span className="truncate">{item.summary}</span>
               </button>

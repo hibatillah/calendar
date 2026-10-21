@@ -53,10 +53,10 @@ export function CalendarApp() {
   } = calendarState;
 
   return (
-    <div className="calendar-shell">
+    <div className="calendar-shell h-[100dvh] flex overflow-hidden">
       {sidebarOpen && <CalendarSidebar state={calendarState} />}
-      <main className="main-calendar">
-        <header className="toolbar">
+      <main className="main-calendar flex-1 min-w-0 flex flex-col">
+        <header className="toolbar h-13 p-[8px_20px] flex items-center justify-between shrink-0 max-[760px]:p-2">
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
               <Button
@@ -129,7 +129,7 @@ export function CalendarApp() {
               </PopoverTrigger>
               <PopoverContent
                 align="end"
-                className="w-[350px] max-h-[85vh] overflow-auto overscroll-contain"
+                className="w-87.5 max-h-[85vh] overflow-auto overscroll-contain"
               >
                 {draft && (
                   <EventEditor
@@ -189,7 +189,7 @@ export function CalendarApp() {
             </Button>
           </div>
         </header>
-        <h1 className="month-title">
+        <h1 className="month-title text-[27px] tracking-[-0.8px] font-bold m-[7px_22px_14px] max-[760px]:text-[23px]">
           {monthLabel(view === "week" ? firstDay : selectedDate)}
         </h1>
         {calendar.isError && (
@@ -219,7 +219,10 @@ export function CalendarApp() {
       </main>
       <CalendarSettings state={calendarState} />
       {message && (
-        <div role="status" className="status-toast flex gap-4 items-center">
+        <div
+          role="status"
+          className="status-toast fixed bottom-5 left-[50%] [transform:translateX(-50%)] z-[60] p-[10px_16px] rounded-[8px] bg-secondary max-w-120 shadow-[0_10px_40px_#0008] flex gap-4 items-center"
+        >
           {message}
           {!calendar.save.isPending && (
             <button aria-label="Dismiss message" onClick={() => setMessage("")}>

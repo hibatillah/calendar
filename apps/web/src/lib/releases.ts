@@ -3,7 +3,8 @@ export const releasesApiUrl =
   "https://api.github.com/repos/hibatillah/calendar/releases?per_page=100";
 
 export const releaseAssetNames = {
-  windows: "calendar-windows-x64.zip",
+  windows: "calendar-windows-x64.msi",
+  windowsPortable: "calendar-windows-x64.zip",
   android: "calendar-android-preview.apk",
   ios: "calendar-ios-simulator.tar.gz",
   web: "calendar-web-build.tar.gz",

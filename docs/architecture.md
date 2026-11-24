@@ -4,7 +4,7 @@ Calendar is a single Windows desktop application: a GPUI window plus a tray icon
 
 ## Status
 
-The repository has been reduced to the Windows desktop app. The desktop app, however, still reads its data through a local GraphQL backend that has been removed from the tree (last present at commit `2a45ab3`). Until the migration below is finished, `apps/desktop/src/service.rs` has no data source and the app will not show Google data.
+The repository has been reduced to the Windows desktop app. The desktop app, however, still reads its data through a local GraphQL backend that has been removed from the tree (last present at commit `2a45ab3`). Until the migration below is finished, `crates/desktop/src/service.rs` has no data source and the app will not show Google data.
 
 Porting reference (all at `2a45ab3`): `apps/backend/src/google/authorization.rs` (PKCE, loopback callback), `credentials.rs` (Credential Manager), `events.rs` (reads, creates, updates), `mapping.rs` (Google ↔ `CalendarEvent`), `google/tests.rs` (fake-endpoint tests worth keeping).
 
@@ -43,18 +43,19 @@ Closing the window should drop the GPUI window so its renderer resources are rel
 
 ## Proposed repository layout
 
+Mirrors the layout of `hibatillah/foldline`: every Rust crate, including the app, lives under `crates/` (`members = ["crates/*"]`, `default-members` is the app); non-Rust projects such as a website sit beside `crates/` in their own directory and outside the Cargo workspace.
+
 ```text
 calendar/
-├── Cargo.toml                  workspace; Cargo.lock
-├── apps/
-│   └── desktop/                the only binary (calendar-desktop.exe)
-│       └── src/
-│           ├── main.rs         startup, single instance, window lifecycle
-│           ├── app.rs, app/    GPUI state, views, gestures, editor (existing)
-│           ├── platform.rs     tray, window placement, Windows-only APIs
-│           ├── notifications.rs  local reminders from cached events (new)
-│           └── service.rs      channel bridge between UI and sync engine
+├── Cargo.toml                  workspace: members = ["crates/*"], release profile
 ├── crates/
+│   ├── desktop/                the only binary (calendar-desktop.exe)
+│   │   └── src/
+│   │       ├── main.rs         startup, single instance, window lifecycle
+│   │       ├── app.rs, app/    GPUI state, views, gestures, editor (existing)
+│   │       ├── platform.rs     tray, window placement, Windows-only APIs
+│   │       ├── notifications.rs  local reminders from cached events (new)
+│   │       └── service.rs      channel bridge between UI and sync engine
 │   ├── calendar-core/          domain types and time rules (existing; no GPUI/HTTP/storage)
 │   ├── calendar-layout/        overlap and column layout (existing; pure)
 │   ├── calendar-google/        new: Google REST client, OAuth/PKCE, token refresh,
@@ -63,15 +64,15 @@ calendar/
 │   │                           credential vault, sync scheduler/coalescing
 │   └── telemetry/              diagnostics (existing; see open questions)
 ├── assets/fonts/               bundled Inter + licence
-├── installer/windows/          WiX MSI authoring
-├── scripts/                    Bash entry points + scripts/windows/ PowerShell helpers
+├── installer/windows/          WiX MSI authoring + Run-Calendar.cmd launcher
+├── scripts/                    plain Bash only (cargo, start, dev-desktop, package-*, test-*)
 ├── docs/                       architecture, google setup, telemetry
 ├── .github/workflows/          ci.yml, release.yml
 ├── .claude/, .codex/           rules and review agents
 └── AGENTS.md
 ```
 
-Why two new crates rather than modules inside `apps/desktop`: the Google client and the sync/storage layer can be tested on any OS with a fake HTTP server and an in-memory SQLite database, which keeps CI feedback off the Windows runner and keeps the existing rule that domain and layout crates do not depend on GPUI, HTTP or storage. If that testing benefit turns out not to matter, merging `calendar-google` and `calendar-sync` into one crate is a reasonable simplification.
+Why two new crates rather than modules inside `crates/desktop`: the Google client and the sync/storage layer can be tested on any OS with a fake HTTP server and an in-memory SQLite database, which keeps CI feedback off the Windows runner and keeps the existing rule that domain and layout crates do not depend on GPUI, HTTP or storage. If that testing benefit turns out not to matter, merging `calendar-google` and `calendar-sync` into one crate is a reasonable simplification.
 
 ## Migration steps remaining
 

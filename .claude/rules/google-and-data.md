@@ -1,6 +1,6 @@
 ---
 paths:
-  - "apps/desktop/src/service.rs"
+  - "crates/desktop/src/service.rs"
   - "crates/calendar-core/**/*.rs"
   - "crates/telemetry/**/*.rs"
 ---

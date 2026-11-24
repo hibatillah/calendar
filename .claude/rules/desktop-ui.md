@@ -1,6 +1,6 @@
 ---
 paths:
-  - "apps/desktop/src/**/*.rs"
+  - "crates/desktop/src/**/*.rs"
   - "assets/**/*"
 ---
 

@@ -1,12 +1,7 @@
 [workspace]
-members = [
-  "apps/desktop",
-  "crates/calendar-core",
-  "crates/calendar-layout",
-  "crates/telemetry",
-]
-default-members = ["apps/desktop"]
 resolver = "3"
+members = ["crates/*"]
+default-members = ["crates/desktop"]
 
 [workspace.package]
 version = "0.1.0"
@@ -37,3 +32,9 @@ reqwest = { version = "0.12", default-features = false, features = [
 debug = 0
 incremental = true
 
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

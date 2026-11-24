@@ -10,21 +10,13 @@ is_windows() {
     esac
 }
 
-run_windows_helper() {
-    local helper_name="$1"
-    shift
-
-    if ! is_windows; then
-        printf '%s requires Windows and Git Bash; WSL is a Linux environment.\n' "$helper_name" >&2
-        return 1
+# GPUI builds only with the MSVC host toolchain. Name it explicitly so Git's link.exe is never picked.
+cargo_command() {
+    if is_windows; then
+        cargo +stable-x86_64-pc-windows-msvc "$@"
+    else
+        cargo "$@"
     fi
-
-    if ! command -v pwsh >/dev/null 2>&1; then
-        printf 'Install PowerShell 7 for Windows build tooling (pwsh must be on PATH).\n' >&2
-        return 1
-    fi
-
-    pwsh -NoProfile -File "$(cygpath -w "$script_directory/windows/$helper_name.ps1")" "$@"
 }
 
 source_snapshot() {
@@ -33,7 +25,7 @@ source_snapshot() {
     (
         cd -- "$root"
 
-        for source_path in apps/desktop crates assets .cargo; do
+        for source_path in crates assets .cargo; do
             if [[ -d "$source_path" ]]; then
                 find "$source_path" -type f -exec cksum {} +
             fi

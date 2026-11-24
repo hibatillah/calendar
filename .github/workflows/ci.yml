@@ -63,9 +63,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: windows-release
-      - name: Build desktop
-        run: bash scripts/cargo.sh build --locked --release --workspace
-      - name: Package portable application
+      - name: Build release and package portable application
         run: bash scripts/package-windows.sh
       - uses: actions/setup-dotnet@v4
         with:
@@ -78,7 +76,7 @@ jobs:
         run: |
           $timestamp = [DateTime]::UtcNow
           $minuteOfMonth = ($timestamp.Day - 1) * 1440 + $timestamp.Hour * 60 + $timestamp.Minute
-          bash scripts/package-msi.sh -Version "$($timestamp.Year - 2025).$($timestamp.Month).$minuteOfMonth"
+          bash scripts/package-msi.sh --version "$($timestamp.Year - 2025).$($timestamp.Month).$minuteOfMonth"
       - name: Verify install and uninstall
         run: bash scripts/test-msi.sh
       - uses: actions/upload-artifact@v4

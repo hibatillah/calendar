@@ -10,7 +10,7 @@ $repositoryRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
 function Get-SourceSnapshot {
     param([string]$Root)
-    $sourcePaths = @('apps/desktop', 'apps/backend', 'crates', 'assets', '.cargo')
+    $sourcePaths = @('apps/desktop', 'crates', 'assets', '.cargo')
     $entries = foreach ($relativePath in $sourcePaths) {
         $sourcePath = Join-Path $Root $relativePath
 
@@ -84,7 +84,7 @@ try {
     } catch { throw 'Another desktop watcher is already running for this repository.' }
 
     $extension = if ($IsWindows) { '.exe' } else { '' }
-    $applicationNames = @('calendar-backend', 'calendar-desktop')
+    $applicationNames = @('calendar-desktop')
     $runningHashes = @{}
     # One-time handoff releases Windows executable locks without throwing away warm Cargo artifacts.
     foreach ($applicationName in $applicationNames) {

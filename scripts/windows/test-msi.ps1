@@ -21,7 +21,7 @@ function Invoke-Installer([string]$Action, [string]$LogName) {
 try {
     Invoke-Installer '/i' 'msi-install.log'
     $installed = $true
-    foreach ($file in @('calendar-desktop.exe', 'calendar-backend.exe', 'Run-Calendar.ps1', '.env.example')) {
+    foreach ($file in @('calendar-desktop.exe', 'Run-Calendar.ps1', '.env.example')) {
         if (!(Test-Path -LiteralPath (Join-Path $installationDirectory $file))) { throw "Missing installed file: $file" }
     }
 

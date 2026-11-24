@@ -1,5 +1,7 @@
 # Diagnostics and PostHog
 
+> The local backend described below as a second telemetry source has been removed. Backend log, GraphQL and repository-span references are historical until the Google/sync layers are reimplemented in the desktop process (see [architecture](architecture.md)). Whether PostHog/OpenTelemetry export stays in a memory-lean app is an open question.
+
 Open **Activity & diagnostics** at the bottom of the desktop sidebar. It displays up to 500 recent rows, newest first, from bounded desktop/backend buffers. Desktop activity updates live; backend records refresh approximately every five seconds. The warning/error filter and Copy diagnostics work offline with the last backend snapshot. Rows are current-process diagnostics, not a permanent event-edit history. Daily JSON files remain in `.local/logs/` (seven per process).
 
 ## Enable uploads

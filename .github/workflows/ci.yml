@@ -23,8 +23,6 @@ jobs:
           for script in scripts/*.sh; do bash -n "$script"; done
       - name: Watcher checks
         run: bash scripts/test-dev-desktop.sh
-      - name: Backend startup failures
-        run: bash scripts/test-shell-startup.sh
       - name: Verify native Cargo entry point
         run: bash scripts/cargo.sh --version
 
@@ -65,7 +63,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: windows-release
-      - name: Build desktop and local backend
+      - name: Build desktop
         run: bash scripts/cargo.sh build --locked --release --workspace
       - name: Package portable application
         run: bash scripts/package-windows.sh
@@ -97,14 +95,3 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           overwrite: true
-
-  macos-desktop:
-    name: macOS desktop compile
-    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: macos-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v4
-      - run: rustup toolchain install stable --profile minimal
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo build --locked -p calendar-desktop -p calendar-backend

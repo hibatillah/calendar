@@ -24,7 +24,6 @@ pub fn create_tray() -> Result<TrayIcon, Box<dyn std::error::Error>> {
         .with_icon(Icon::from_rgba(pixels, 32, 32)?)
         .with_menu(Box::new(menu))
         .with_menu_on_left_click(false)
-        .with_icon_as_template(cfg!(target_os = "macos"))
         .build()?)
 }
 
@@ -39,9 +38,6 @@ pub fn agenda_bounds(context: &App) -> Bounds<Pixels> {
     }
     let display = context.primary_display().expect("Desktop display");
     let bounds = display.visible_bounds();
-    #[cfg(target_os = "macos")]
-    let vertical = bounds.origin.y + px(34.0);
-    #[cfg(not(target_os = "macos"))]
     let vertical = bounds.origin.y + bounds.size.height - px(540.0);
     Bounds {
         origin: point(bounds.origin.x + bounds.size.width - px(400.0), vertical),

@@ -9,9 +9,7 @@ if (Test-Path -LiteralPath $packageDirectory) { throw 'Package directory already
 
 New-Item -ItemType Directory -Path $packageDirectory -Force | Out-Null
 
-foreach ($binary in @('calendar-desktop.exe', 'calendar-backend.exe')) {
-    Copy-Item -LiteralPath (Join-Path $PWD "target/$Profile/$binary") -Destination $packageDirectory
-}
+Copy-Item -LiteralPath (Join-Path $PWD "target/$Profile/calendar-desktop.exe") -Destination $packageDirectory
 
 Copy-Item -LiteralPath 'scripts/windows/run-portable.ps1' -Destination (Join-Path $packageDirectory 'Run-Calendar.ps1')
 Copy-Item -LiteralPath 'scripts/run-portable.sh' -Destination (Join-Path $packageDirectory 'Run-Calendar.sh')
@@ -21,6 +19,6 @@ Copy-Item -LiteralPath 'docs' -Destination $packageDirectory -Recurse
 $licenseDirectory = Join-Path $packageDirectory 'third-party-licenses'
 
 New-Item -ItemType Directory -Path $licenseDirectory | Out-Null
-Copy-Item -LiteralPath 'assets/fonts/OFL.txt','assets/graphiql/LICENSE.graphiql','assets/graphiql/LICENSE.react' -Destination $licenseDirectory
+Copy-Item -LiteralPath 'assets/fonts/OFL.txt' -Destination $licenseDirectory
 Compress-Archive -Path "$packageDirectory/*" -DestinationPath 'dist/calendar-windows-x64.zip' -Force
 Write-Host 'Created dist/calendar-windows-x64.zip (no local state or credentials included).'

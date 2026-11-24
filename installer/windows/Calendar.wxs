@@ -3,7 +3,7 @@
            UpgradeCode="AA88641A-078C-443B-AD3C-259B25A04D99" Scope="perMachine">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Calendar is already installed." />
     <MediaTemplate EmbedCab="yes" />
-    <Property Id="ARPCOMMENTS" Value="Calendar desktop and local backend. User data is preserved when uninstalling." />
+    <Property Id="ARPCOMMENTS" Value="Calendar desktop app. User data is preserved when uninstalling." />
     <Property Id="ARPURLINFOABOUT" Value="https://cal.hibatillah.com" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicensePath)" />
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />

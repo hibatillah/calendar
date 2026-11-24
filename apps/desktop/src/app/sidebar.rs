@@ -25,7 +25,6 @@ impl CalendarApp {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .when(cfg!(target_os = "macos"), |element| element.pt_5())
                     .child(
                         icon_button("sidebar-today", "icons/chevron-down.svg")
                             .text_color(rgb(MUTED))

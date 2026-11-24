@@ -33,7 +33,7 @@ source_snapshot() {
     (
         cd -- "$root"
 
-        for source_path in apps/desktop apps/backend crates assets .cargo; do
+        for source_path in apps/desktop crates assets .cargo; do
             if [[ -d "$source_path" ]]; then
                 find "$source_path" -type f -exec cksum {} +
             fi

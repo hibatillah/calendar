@@ -4,93 +4,66 @@ Keep identifiers explicit: `event_id`, `calendar_id`, `operation_id`. Use Rust f
 
 After the initial repository bootstrap, make every change on a feature branch and open a pull request into `main`. Let CI finish and resolve failures before merging. Do not push changes directly to `main`. Creating a PR does not authorize merging it.
 
+Calendar is a Windows-only desktop app that talks to Google Calendar directly. There is no backend, web or mobile client. See [architecture](docs/architecture.md) for the target layout and the migration that is still in progress.
+
 ## Where changes belong
 
 - `crates/calendar-core`: domain types, validation and time rules. No GUI, HTTP or database dependency.
 - `crates/calendar-layout`: pure event placement and overlapping-column calculation.
-- `apps/desktop/src/app.rs`: state and lifecycle; `apps/desktop/src/app/`: views, editor, gestures and controls.
-- `apps/desktop/src/platform.rs`: native backdrop/tray placement. Keep Windows imports behind target gates.
-- `apps/desktop/src/service.rs`: background GraphQL calls, cache and operation journal. See the module map in `docs/architecture.md` for web/mobile controllers and Google provider modules.
-- `apps/backend/src/repository.rs`: storage transactions and conflict/idempotency rules.
-- `crates/telemetry`: local diagnostics, PostHog events/errors and OpenTelemetry log/trace export.
+- `crates/desktop/src/app.rs`: state and lifecycle; `crates/desktop/src/app/`: views, editor, gestures and controls.
+- `crates/desktop/src/platform.rs`: tray and window placement. Keep Windows imports behind target gates.
+- `crates/desktop/src/service.rs`: bridge between the UI and background work. Network and database work never runs on the UI thread.
+- `crates/telemetry`: local diagnostics and optional PostHog/OpenTelemetry export.
+- `crates/calendar-google` and `crates/calendar-sync` are planned; see the architecture document before adding Google or storage code elsewhere.
 
 ## Testing
 
-Use ordinary Rust tests for calendar mathematics, `#[tokio::test]` plus Tower `ServiceExt::oneshot` for real Axum route behavior, and `#[gpui::test]` with `TestAppContext` for GUI state transitions. Tests must use isolated memory databases or test-owned files, never the running preview database.
+Use ordinary Rust tests for calendar mathematics and `#[gpui::test]` with `TestAppContext` for GUI state transitions. Tests must use isolated memory databases or test-owned files, never the running app's database. Provider tests use fake HTTP endpoints, not Google.
 
 Add cases for behavior that can lose or misplace time: overlap clusters, midnight, leap dates, DST gaps/repeated hours, stale writes and repeated operation IDs. Test requested behavior rather than implementation details.
 
 Before declaring native UI work verified, check opaque header/sidebar colors and the Activity panel, minimize/maximize/restore, resized layouts, drag/resize cancellation, offline event viewing, and tray activation/quit. Compilation and headless tests do not prove native appearance.
 
-macOS builds need a Mac with the Xcode tools. Use normal `cargo` commands there; do not introduce Windows dependencies into shared crates. Keep traffic-light space, menu-bar template icons and native window lifecycle in mind. No macOS support claim until it has been built and exercised there.
-
 ## Logs and privacy
 
-Log meaningful state changes with `action`, object/operation IDs and outcome. Never log OAuth credentials, session tokens, full API requests, or event content. Use `RUST_LOG` for filtering and `CALENDAR_LOG_DIR` to select a local directory. Cache/journal files contain event content; logs are diagnostics, not an audit backup.
+Log meaningful state changes with `action`, object/operation IDs and outcome. Never log OAuth credentials, tokens, full API requests, or event content. Use `RUST_LOG` for filtering and `CALENDAR_LOG_DIR` to select a local directory. Cache/journal files contain event content; logs are diagnostics, not an audit backup.
 
-References: [Axum's testing example](https://github.com/tokio-rs/axum/blob/main/examples/testing/src/main.rs), [GPUI test context](https://docs.rs/gpui/latest/gpui/attr.test.html).
-
-For telemetry, use static screen/control/error categories. Instrument async operations with `#[tracing::instrument(skip_all)]` so event bodies and tokens never become span attributes. Remote logs use an allowlist; do not expand it to free-form user data. Keep transport logs out of remote export to prevent feedback loops. See [telemetry](docs/telemetry.md) for configuration and verification.
-
-Document GraphQL fields and arguments alongside their Rust definitions. Keep examples in `docs/graphql.md` aligned with the exported SDL. Tests should cover authenticated introspection, query/mutation behavior and error extension codes.
+For telemetry, use static screen/control/error categories. Instrument async operations with `#[tracing::instrument(skip_all)]` so event bodies and tokens never become span attributes. Remote logs use an allowlist; do not expand it to free-form user data. See [telemetry](docs/telemetry.md).
 
 ## Readability and formatting
 
-Use one statement per line. Separate imports from declarations, and separate functions, hooks, validation, side effects, and returns with a blank line. Keep related declarations together. Use explicit identifiers and extract coherent responsibilities rather than introducing one-line wrapper modules.
+Use one statement per line. Separate imports from declarations, and separate functions, validation, side effects, and returns with a blank line. Use explicit identifiers and extract coherent responsibilities rather than introducing one-line wrapper modules. Run `bash scripts/cargo.sh fmt --all` for Rust. Validate shell scripts with `bash -n scripts/<name>.sh`.
 
-Run `bun run format` (Oxfmt) for maintained TypeScript, JavaScript, CSS, HTML, JSON, YAML, TOML, GraphQL and Markdown; use `bun run format:check` in CI. Run `bun run lint` (Oxlint) for the TypeScript/JavaScript workspace and `bun run typecheck` separately. Mobile uses the same root lint configuration. Run `bash scripts/cargo.sh fmt --all` for Rust. Keep PowerShell statements in readable logical groups and validate scripts with the PowerShell parser. Generated operation types, route trees, GraphQL SDL, native projects, assets and build outputs are excluded from manual formatting. Oxfmt preserves logical blank lines but does not decide where they belong; review those boundaries explicitly.
-
-Oxlint uses correctness rules with TypeScript and React support, including hook rules and dependency checks. It replaces the Expo ESLint preset rather than reproducing every Expo-specific rule. Rust source remains covered by rustfmt and Clippy. Both Oxc tools use small root JSON configs; keep generated and bundled files excluded.
-
-Keep formatting commits separate from behavior-preserving module extractions. Refactoring must preserve OAuth scopes, storage keys, event IDs, optimistic updates, notification scheduling and platform boundaries. Run the affected browser/native checks after moving code.
+Keep formatting commits separate from behavior-preserving module extractions. Refactoring must preserve OAuth scopes, storage keys, event IDs and optimistic updates.
 
 ## Stack and project structure
 
-The desktop uses Rust/GPUI, the backend uses Axum/GraphQL, and the local preview uses SQLite. Web uses TanStack Start; mobile uses Expo/React Native. Bun workspaces and Turborepo coordinate TypeScript packages alongside the Cargo workspace.
+Rust and GPUI for the app, SQLite for the local cache, Cargo for builds. See [architecture](docs/architecture.md) for the full proposed layout.
 
 ```text
 calendar/
-|-- apps/
-|   |-- backend/          Axum API, Google integration and storage
-|   |-- desktop/          GPUI calendar and tray
-|   |-- mobile/           Expo Android/iOS client
-|   `-- web/              TanStack Start calendar and landing page
 |-- crates/
-|   |-- calendar-core/    Rust event and time rules
+|   |-- desktop/          GPUI calendar and tray (the only binary)
+|   |-- calendar-core/    Event and time rules
 |   |-- calendar-layout/  Event placement and overlap calculations
 |   `-- telemetry/        Diagnostics and optional remote telemetry
-|-- packages/
-|   |-- api/              Typed GraphQL client and shared query state
-|   |-- calendar/         TypeScript calendar helpers
-|   `-- design-tokens/    Shared design values
-|-- contracts/graphql/   Schema and client operations
-|-- assets/              Bundled fonts, icons and GraphiQL assets
-|-- scripts/             Local development and packaging helpers
-|-- tests/               Web and mobile browser tests
-|-- docs/                Architecture and integration guides
-|-- .github/workflows/   Checks and application builds
-|-- .claude/             Claude rules and review agents
-|-- .codex/              Codex rules and review agents
-`-- AGENTS.md            Repository instruction entry point
+|-- assets/fonts/         Bundled Inter
+|-- installer/windows/    WiX MSI authoring
+|-- scripts/              Bash entry points (build, relaunch, watch, package)
+|-- docs/                 Architecture, Google setup, telemetry
+|-- .github/workflows/    Checks and Windows packaging
+|-- .claude/, .codex/     Rules and review agents
+`-- AGENTS.md             Repository instruction entry point
 ```
-
-See [architecture](docs/architecture.md) for ownership boundaries, [web development](docs/web.md) for the local transport, and [mobile development](docs/mobile.md) for device setup. The current backend is local; public multi-user hosting is not implemented.
 
 ## Run locally
 
-Use Bash entry points from Git Bash on Windows or a Bash terminal on macOS/Linux. Windows builds still require Rust's MSVC toolchain, Visual Studio C++ Build Tools, Windows SDK, and PowerShell 7 on PATH. The Windows helpers in `scripts/windows/` initialize MSVC and handle native processes and installers; Bash forwards arguments and exit codes to them. PowerShell is not required by the Unix Cargo path.
+Use Bash entry points from Git Bash on Windows. Builds require Rust's MSVC toolchain, Visual Studio C++ Build Tools and the Windows SDK. All scripts are plain Bash; there are no PowerShell helpers. `scripts/cargo.sh` selects the `stable-x86_64-pc-windows-msvc` toolchain explicitly so Git's `link.exe` is never used; run Cargo through it. Process control and ZIP creation call `cmd.exe`/`powershell.exe` inline.
 
-WSL runs Linux binaries, not the Windows desktop build. Use Git Bash to build the native Windows app. Linux backend development and Docker hosting are supported workflows; Linux desktop support is not a release target. macOS requires Xcode tools and still needs native verification. The Unix desktop runner also requires `curl` and refuses to start over an existing backend on port 47821.
+WSL runs Linux binaries, not the Windows desktop build. The shared crates (`calendar-core`, `calendar-layout`, `calendar-telemetry`) build and test on Linux; `calendar-desktop` needs Windows.
 
 ```bash
 bash scripts/start.sh
-```
-
-The script builds both applications, starts the backend at `127.0.0.1:47821`, and opens the desktop. For separate terminals:
-
-```bash
-bash scripts/cargo.sh run -p calendar-backend
-bash scripts/cargo.sh run -p calendar-desktop
 ```
 
 For automatic GPUI rebuild/restart during development:
@@ -99,11 +72,9 @@ For automatic GPUI rebuild/restart during development:
 bash scripts/dev-desktop.sh
 ```
 
-The watcher debounces changes to Rust sources, Cargo manifests and bundled assets. It builds incrementally, keeps the last working app open when compilation fails, and restarts only binaries whose contents changed. Backend-only changes do not restart the desktop. Changes saved during compilation trigger another build. On Windows, a one-time handoff moves existing debug processes to copies in `.local/dev-desktop/`, releasing executable locks while preserving Cargo's warm cache. Run only one watcher per checkout; avoid `start.sh` or concurrent Cargo builds while it is active.
+The watcher debounces changes to Rust sources, Cargo manifests and bundled assets, builds incrementally, keeps the last working app open when compilation fails, and restarts the app only when its binary changed. This is automatic rebuild/restart, not in-process hot reload: saved settings, accounts and caches survive, but unsaved forms and transient UI state reset. Run only one watcher per checkout. On Windows, Ctrl+C stops watching and leaves the app running; `--once` builds once.
 
-This is automatic rebuild/restart, not in-process hot reload: saved settings, accounts and caches survive, but unsaved forms, scroll position and transient UI state reset. Avoid saving source while an event write is pending. Use `--once` for one build. On Windows, Ctrl+C stops watching and leaves the apps running. On Unix, the shell owns its child processes: Ctrl+C stops them, and `--once` stays attached until the desktop exits. Native macOS behavior remains unverified.
-
-Run commands from the repository root. State and logs go into ignored `.local/`. Protected API endpoints requires the local token in `.local/session-token`; it is not intended to be exposed to the network. There is no hosted backend. Optional PostHog uploads are disabled until explicitly configured; see [telemetry](docs/telemetry.md).
+Run commands from the repository root. State and logs go into ignored `.local/`.
 
 ## Checks
 
@@ -113,64 +84,18 @@ bash scripts/cargo.sh test --workspace --features calendar-desktop/ui-tests
 bash scripts/cargo.sh clippy --workspace --all-targets --features calendar-desktop/ui-tests '--' '-D' warnings
 ```
 
-GPUI tests run against a test window, without operating your desktop. Native appearance, tray placement and pointer hit targets still need runtime inspection. macOS boundaries exist, but no macOS build has been verified here.
+GPUI tests run against a test window, without operating your desktop. Native appearance, tray placement and pointer hit targets still need runtime inspection. Run `bash scripts/test-dev-desktop.sh` for watcher checks. Validate shell syntax with `bash -n scripts/<name>.sh`.
 
-Run `bash scripts/test-dev-desktop.sh` for watcher checks and `bash scripts/test-shell-startup.sh` for isolated port-collision and startup-failure tests. Validate shell syntax with `bash -n scripts/<name>.sh`; Windows implementation helpers remain checked with the PowerShell parser. Run MSI and portable packaging entry points from Git Bash on Windows. Their options retain the native helper names (`-Profile release`, `-Version 1.10.1`).
+## Packaging and CI
 
-## Downloads and CI
+GitHub Actions runs shell checks and Rust checks (format, tests including GPUI interactions, Clippy) on Windows for every pull request. PRs into `main` also build the release executable, a portable ZIP and an MSI, then install and uninstall the MSI on the disposable runner. The result is uploaded as `calendar-windows-x64-<commit>` for 14 days.
 
-GitHub Actions runs regular checks on every pull request and manual check-workflow run. PRs targeting `main` also build the applications. After a merge to `main`, the Release workflow calls the same check/build workflows for the exact merged commit and publishes only when all succeed. The Windows release build is uploaded as the `calendar-windows-x64-<commit>` artifact for 14 days. Download it from the workflow run and extract both ZIP layers if GitHub wraps the portable ZIP.
+The MSI installs `calendar-desktop.exe` in Program Files, creates Start-menu and desktop shortcuts, and registers with Windows Settings → Apps. Configuration and caches live under `%LOCALAPPDATA%\Calendar`; edit the `.env` there for [Google setup](docs/google.md). Uninstall preserves user data and Credential Manager entries; disconnect accounts in Settings first to revoke access. The portable ZIP runs with `Run-Calendar.cmd`, which keeps data in `%LOCALAPPDATA%\Calendar` like the installed copy. The app itself still writes `.local/` relative to its working directory; resolving a data directory inside the app is part of the migration. Both are unsigned previews; no credentials, telemetry token or calendar cache is packaged.
 
-The MSI installs both executables in Program Files, creates Start-menu and desktop shortcuts, and registers with Windows Settings → Apps for repair/uninstall. The Start menu also includes an uninstall shortcut. Its hidden launcher starts the local backend and stops that backend after the desktop exits. Configuration and caches live under `%LOCALAPPDATA%\Calendar`; edit the `.env` there for [Google setup](docs/google.md). Uninstall removes application files and shortcuts but deliberately preserves user data and OS-vault credentials. Disconnect accounts in Settings before uninstalling if you want to revoke access.
+MSI authoring is in `installer/windows/Calendar.wxs`. Install .NET SDK 8, then `dotnet tool install --global wix --version 6.0.2` and `wix extension add --global WixToolset.UI.wixext/6.0.2`. After building the executable, run `bash scripts/package-windows.sh` and `bash scripts/package-msi.sh --version 1.10.1`. Use increasing three-part MSI versions for upgrades; CI derives its version from UTC year/month/minute-of-month. `scripts/test-msi.sh` installs and uninstalls only in disposable CI runners.
 
-The portable ZIP remains available. Copy `.env.example` to `.env`, configure Desktop OAuth, and run `bash Run-Calendar.sh` from Git Bash. It invokes the bundled Windows PowerShell launcher; users without Bash can run `Run-Calendar.ps1` directly. The MSI's shortcuts invoke Windows PowerShell automatically and do not require Bash or PowerShell 7. Keep the portable directory writable. Installed and portable copies should not run together because they use the same loopback port 47821. Neither requires Rust or Visual Studio. Both are unsigned previews; no credentials, telemetry token, or calendar cache is packaged.
-
-MSI authoring is in `installer/windows/Calendar.wxs`. Install .NET SDK 8, then `dotnet tool install --global wix --version 6.0.2` and `wix extension add --global WixToolset.UI.wixext/6.0.2`. After building the executables, run `bash scripts/package-windows.sh` and `bash scripts/package-msi.sh -Version 1.10.1`. Use increasing three-part MSI versions for upgrades; CI derives its version from UTC year/month/minute-of-month. `scripts/test-msi.sh` installs/uninstalls only in disposable CI runners and verifies shortcuts and data preservation. Close Calendar before installing upgrades or uninstalling.
-
-After the bootstrap commit, changes go through feature branches and PRs with passing CI. Regular checks cover formatting, Rust/GPUI tests, Clippy, generated GraphQL contracts, TypeScript, linting, shared date tests, and web/mobile browser interactions. PRs into feature branches skip application packaging. PRs into `main` and post-merge release runs build the web production output, export mobile bundles, and package Windows executables, Android preview APKs, and unsigned iOS simulator archives. Test-related compilation still runs wherever the tests require it.
-
-## GraphQL documentation
-
-Open [GraphiQL](http://127.0.0.1:47821/docs), paste `.local/session-token` into the local session token field, then click Connect. Open the Docs panel to browse queries, mutations, types, field descriptions and arguments. The bundled UI runs locally and keeps credentials only in memory. The PostHog project token is unrelated to API authentication.
-
-- `POST /graphql`: authenticated queries, mutations and introspection.
-- `GET /schema.graphql`: public schema SDL (types and documentation only, no calendar data).
-- `GET /health`: local backend health.
-- `GET /diagnostics/logs`: authenticated recent backend diagnostics.
-
-The backend exports the documented schema to `contracts/graphql/schema.graphql` at startup. See [GraphQL examples](docs/graphql.md) for queries, mutations and error handling. The temporary REST calendar endpoints and Scalar integration have been removed. Existing events, cache and mutation journal are preserved.
-
-## Preview implementation notes
-
-- Display time defaults to Asia/Jakarta. Dragging snaps to 15 minutes; all-day end dates are exclusive.
-- Offline viewing uses account-specific SQLite caches. New offline edits are rejected; mutation IDs and a durable operation journal prepare for later reconciliation and queued edits.
-- The local session token is a development guard, not multi-user authentication. Existing Google accounts may need to approve editing/profile permissions in Settings. Recurring-series edits and public onboarding remain future work.
-- Activity & diagnostics shows desktop/backend entries with a warning/error filter and copy action. Daily JSON logs live in `.local/logs/`, retaining seven files per application. Logs contain operation/event IDs and outcomes, not event titles, descriptions or tokens.
-- Windows previews are unsigned. macOS boundaries and iOS simulator builds do not establish physical-device verification.
+Every push to `main` runs `.github/workflows/release.yml`, which reuses CI at the merged commit, then publishes a draft GitHub Release (`preview-<run number>`) with the ZIP, MSI and `SHA256SUMS.txt` and marks it as a prerelease. Release notes use GitHub's generated PR notes and `.github/release.yml` categories.
 
 ## Agent instructions
 
-`AGENTS.md` routes Codex to the relevant `.codex/rules/` documents. `.codex/agents/` contains TOML definitions for the two review roles, following the [official custom agent format](https://developers.openai.com/codex/subagents). Rules are read through explicit references; a `.codex/rules/` directory alone is not an automatic instruction loader. The reviewers inherit the session model and permissions and are instructed to inspect and report only. Their instructions are not a security sandbox.
-
-Claude rule and agent equivalents remain in `.claude/`. Keep matching guidance aligned. The former root `CLAUDE.md` is now `AGENTS.md`; Claude users should load `AGENTS.md` explicitly when their client does not discover it.
-
-## Automatic preview releases
-
-Every push to `main` runs `.github/workflows/release.yml`. Keep main protected and merge through PRs. The workflow reuses CI, Mobile, and Web checks/builds at the merged commit; it never promotes artifacts from an untrusted PR. Feature-branch PRs still skip packaging. Main builds use a commit-specific concurrency group so a later merge does not cancel an earlier release.
-
-After every required job succeeds, publishing creates a draft GitHub Release, attaches all files plus `SHA256SUMS.txt`, and publishes it as a prerelease. Tags are `preview-<Release workflow run number>`, an increasing build identifier rather than a semantic version. Re-running the same run uses the same tag: unfinished drafts can be completed, while published assets stay unchanged. Use **Re-run failed jobs** to recover a failed run. No PAT or Changesets service is required; only the publishing job receives `contents: write` via `GITHUB_TOKEN`.
-
-Release notes use GitHub's generated PR notes and `.github/release.yml` categories, following the approach in [Acure PR 153](https://github.com/encurehq/acure/pull/153). Unlike Acure, every successful main push gets a preview rather than requiring a release/version branch. Use merge commits for promotion branches if you want individual included PRs to remain visible in generated notes.
-
-| Asset                           | Purpose                                                                                         |
-| ------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `calendar-windows-x64.zip`      | Unsigned portable desktop and backend, launch script, setup docs, and license files             |
-| `calendar-windows-x64.msi`      | Unsigned Windows installer, bundled backend, shortcuts, upgrades and standard uninstall         |
-| `calendar-android-preview.apk`  | Android developer preview using the generated project's preview signing configuration           |
-| `calendar-ios-simulator.tar.gz` | Unsigned Xcode simulator app; not installable on a physical iPhone                              |
-| `calendar-web-build.tar.gz`     | Web client/server build output for developers; not a standalone installer or a deployed website |
-| `SHA256SUMS.txt`                | Checksums of all application build files                                                        |
-
-The `/download` page and landing download section request the public Releases API, include prereleases, and select the highest published `preview-N` number so an older slow build cannot replace a newer build on the website. Successful lookups are cached in the browser session for five minutes. Only uploaded, nonempty assets with the expected repository URL get download links. Empty releases and API failures show an honest unavailable state with a GitHub Releases fallback. No token is shipped to the browser. Downloads themselves are public release files and do not depend on expiring Actions artifacts.
-
-macOS binaries and physical-iOS distribution are not shipped yet. Publicly signed Windows/macOS packages, a stable private Android signing key, and iOS distribution through TestFlight/App Store require separate release setup. These previews still require local backend/Google configuration. The first actual publication can only be verified after this workflow reaches main.
+`AGENTS.md` routes Codex to the relevant `.codex/rules/` documents; `.codex/agents/` holds the two review roles. Claude equivalents live in `.claude/`. Keep matching guidance aligned across both directories.

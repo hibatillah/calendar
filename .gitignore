@@ -7,37 +7,10 @@
 *.db-shm
 *.db-wal
 
-# Builds and local tooling (Rust, future web/mobile workspaces)
+# Builds
 /dist/
-node_modules/
-.turbo/
-.expo/
-.next/
-.output/
-.vercel/
-coverage/
-*.tsbuildinfo
-**/android/.gradle/
-**/android/local.properties
-**/android/app/build/
-**/ios/Pods/
-**/ios/build/
-*.keystore
-*.jks
-*.p12
-*.mobileprovision
 *.log
 .DS_Store
 Thumbs.db
 .claude/settings.local.json
 CLAUDE.local.md
-
-
-# TypeScript application output and native generated projects
-apps/*/dist/
-apps/mobile/android/
-apps/mobile/ios/
-apps/mobile/expo-env.d.ts
-apps/web/.tanstack/
-test-results/
-playwright-report/

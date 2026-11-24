@@ -6,7 +6,7 @@ tools: Read, Grep, Glob
 
 Review the supplied changed paths and requested behavior. Read `CONTRIBUTING.md`, `docs/google.md`, `.claude/rules/google-and-data.md`, `.claude/rules/calendar-behavior.md` and `.claude/rules/verification.md` before reviewing. Consult `docs/architecture.md` for cross-layer changes.
 
-1. Trace the affected flow from GraphQL through provider/storage code and back through the desktop service. Follow identifiers and revisions across boundaries.
+1. Trace the affected flow from the Google API client through sync/storage code to the desktop service. Follow identifiers and revisions across boundaries.
 2. Check consent/read/write states, token refresh, cancellation, duplicate-account login, logout, restart and credential separation. Use source and sanitized evidence; leave `.env`, session tokens, vault contents and user databases unread.
 3. Check pagination, date-range coverage, recurring-instance identity, exclusive all-day ends, empty responses and failures. Verify that transient failures preserve cache and one account cannot overwrite another's data.
 4. Check stable create IDs, operation identity, concurrent updates, uncertain write outcomes and optimistic reconciliation. Include provider permissions, notification behavior and log/telemetry exposure.

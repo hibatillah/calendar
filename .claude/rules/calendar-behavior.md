@@ -1,7 +1,6 @@
 ---
 paths:
-  - "apps/desktop/src/**/*.rs"
-  - "apps/backend/src/**/*.rs"
+  - "crates/desktop/src/**/*.rs"
   - "crates/calendar-core/**/*.rs"
   - "crates/calendar-layout/**/*.rs"
 ---

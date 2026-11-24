@@ -1,53 +1,91 @@
-# Architecture and boundaries
+# Architecture
 
-## TypeScript workspace decision
+Calendar is a single Windows desktop application: a GPUI window plus a tray icon, talking to the Google Calendar REST API directly. There is no backend service, no web client and no mobile client.
 
-The TypeScript clients use **Bun workspaces** with one committed `bun.lock`. Use `workspace:*` for shared API, calendar helpers and design-token packages. Pin Bun in the root package manifest and CI; use frozen-lockfile installs. Keep Node available for Expo and tooling that requires it; Bun as package manager does not replace Metro, native build tools or the mobile JavaScript engine.
+## Status
 
-Use **Turborepo** with those applications to coordinate shared-package dependencies, type checking, tests and web builds. Cache deterministic outputs only; disable caching for development servers, OAuth flows, deployment and signing. Keep native Android/iOS builds in their dedicated CI jobs. Cargo remains the Rust workspace/build system, with its own lockfile and cache. Do not wrap every Rust crate in a JavaScript package or duplicate Cargo's build graph.
+The repository has been reduced to the Windows desktop app. The desktop app, however, still reads its data through a local GraphQL backend that has been removed from the tree (last present at commit `2a45ab3`). Until the migration below is finished, `crates/desktop/src/service.rs` has no data source and the app will not show Google data.
 
-The web app and shared TypeScript packages implement this workspace. The mobile app builds on the same API and calendar packages. References: [Bun workspaces](https://bun.sh/docs/pm/workspaces), [Turborepo installation](https://turborepo.com/docs/getting-started/installation), [Expo with Bun](https://docs.expo.dev/guides/using-bun/).
+Porting reference (all at `2a45ab3`): `apps/backend/src/google/authorization.rs` (PKCE, loopback callback), `credentials.rs` (Credential Manager), `events.rs` (reads, creates, updates), `mapping.rs` (Google ↔ `CalendarEvent`), `google/tests.rs` (fake-endpoint tests worth keeping).
 
-## Current local application
+## Target runtime shape
 
 ```text
-GPUI window / tray agenda
-        │ commands and snapshots (channels)
-        ▼
-Background service ── SQLite desktop cache + operation journal
-        │ GraphQL over loopback, local token
-        ▼
-Axum / async-graphql ── repository ── SQLite backend store
+GPUI window  ◄── snapshots ──┐        tray icon + menu
+     │ commands              │             │ open / quit / agenda
+     ▼                       │             ▼
+ service.rs (channel bridge) ┴──► sync engine (one Tokio current-thread runtime, off the UI thread)
+                                      │            │
+                          calendar-google      store (SQLite cache, sync tokens, journal)
+                          REST + OAuth         Credential Manager (refresh tokens)
 ```
 
-The UI never performs network or database I/O on its rendering thread. Both windows read the same cache and backend. The backend commits an event and its idempotency result in one transaction. Retries with the same ID and same request return the committed result; different data under that ID is rejected. Expected revisions prevent stale writes.
+- OAuth 2.0 authorization-code flow with PKCE and a loopback redirect on `127.0.0.1`. Refresh tokens live in Windows Credential Manager, access tokens in memory only.
+- Reads use `events.list` with `syncToken` after the first full sync. A `410 Gone` clears that calendar's token and triggers a full resync. Writes use stable event IDs and ETags (`If-Match`).
+- `events.watch` is not used: it needs a public HTTPS endpoint. Sync is polled.
+- The UI never performs network or database I/O. It shows cached data first and re-renders when a sync result arrives.
 
-The first local implementation uses SQLite because it runs without a database service. PostgreSQL remains the hosted-product target; this is a deliberate local-preview deviation from the initial plan. SQL stays in the backend repository. Schema initialization is currently small and inline; versioned migrations are required before changing an existing release schema.
+### Sync triggers
 
-The desktop stores pending commands before sending them. Transport failures are marked `needs_reconciliation`, not silently replayed. Automatic recovery/replay is not implemented yet. A server read refresh restores authoritative events; a durable operation-result endpoint is the next step before enabling offline edits.
+| State                         | Behavior                                              |
+| ----------------------------- | ----------------------------------------------------- |
+| Window open                   | Poll every 30–60 s                                    |
+| Window closed, running in tray | Poll every 2–5 min                                    |
+| Window opened, window focused, tray menu opened | One immediate sync                          |
+| Sync finished a few seconds ago | Skip the trigger                                    |
+| Sync already running          | Join it; never start a second one                     |
 
-Rust doc comments on schema types, fields and resolver arguments become GraphQL descriptions. Authenticated introspection powers the local GraphiQL docs explorer. The backend exports SDL to `contracts/graphql/schema.graphql` and serves it at `/schema.graphql`. The desktop uses explicit GraphQL operations and Serde. Introduce generated Rust and TypeScript clients as the schema grows.
+Intervals are initial values to tune against measured request volume and battery impact.
 
-## Platform readiness
+### Closing to the tray
 
-Calendar types, storage and layout are shared Rust. Native backdrop/tray integration is in `platform.rs`; Windows work-area and DPI APIs are target-gated. GPUI handles the native renderer. macOS gets transparent title-bar options, traffic-light space, a template tray icon and a top-screen popup fallback. macOS packaging, lifecycle differences and actual rendering still require a Mac.
+Closing the window should drop the GPUI window so its renderer resources are released, leaving the process with the tray, sync timer and local reminders. Whether GPUI returns enough memory when the last window closes is **unmeasured**. If the in-tray footprint stays too high, the fallback is a split: a tiny tray/sync agent executable that launches the UI executable on demand. Do not build the split before measuring.
 
-Desktop currently uses Chrono + chrono-tz rather than the initial Jiff candidate. Named-zone conversion is explicit; nonexistent and ambiguous local times produce errors. Events store UTC instants and a named zone. All-day values use midnight boundaries in the display zone and an all-day flag, preserving provider exclusive end dates.
+## Proposed repository layout
 
-## Google integration boundary
+Mirrors the layout of `hibatillah/foldline`: every Rust crate, including the app, lives under `crates/` (`members = ["crates/*"]`, `default-members` is the app); non-Rust projects such as a website sit beside `crates/` in their own directory and outside the Cargo workspace.
 
-Implemented: desktop OAuth with PKCE/state, per-account OS credential storage, calendar discovery, paginated event reads with recurring-instance expansion, and account/month-specific offline caches. The desktop refreshes a 56-day range every 30 seconds while idle and requests a new range when the displayed month changes. Calendar roles and OAuth permissions control editability. Creates use stable IDs and updates use ETags; operation markers reconcile retries. Account-prefixed identifiers keep shared calendars separate. Legacy preview rows and caches are removed on startup.
+```text
+calendar/
+├── Cargo.toml                  workspace: members = ["crates/*"], release profile
+├── crates/
+│   ├── desktop/                the only binary (calendar-desktop.exe)
+│   │   └── src/
+│   │       ├── main.rs         startup, single instance, window lifecycle
+│   │       ├── app.rs, app/    GPUI state, views, gestures, editor (existing)
+│   │       ├── platform.rs     tray, window placement, Windows-only APIs
+│   │       ├── notifications.rs  local reminders from cached events (new)
+│   │       └── service.rs      channel bridge between UI and sync engine
+│   ├── calendar-core/          domain types and time rules (existing; no GPUI/HTTP/storage)
+│   ├── calendar-layout/        overlap and column layout (existing; pure)
+│   ├── calendar-google/        new: Google REST client, OAuth/PKCE, token refresh,
+│   │                           Google ↔ core mapping. No GPUI, no storage.
+│   ├── calendar-sync/          new: SQLite cache, sync tokens, operation journal,
+│   │                           credential vault, sync scheduler/coalescing
+│   └── telemetry/              diagnostics (existing; see open questions)
+├── assets/fonts/               bundled Inter + licence
+├── installer/windows/          WiX MSI authoring + Run-Calendar.cmd launcher
+├── scripts/                    plain Bash only (cargo, start, dev-desktop, package-*, test-*)
+├── docs/                       architecture, google setup, telemetry
+├── .github/workflows/          ci.yml, release.yml
+├── .claude/, .codex/           rules and review agents
+└── AGENTS.md
+```
 
-Still required: incremental sync and invalidation recovery, series-wide recurring edits, attendee management, configurable display zones and hosted multi-user isolation. All-day provider dates map to midnight in the fixed Asia/Jakarta display zone with exclusive end dates preserved. Public multi-user web/mobile hosting remains deferred; the web development bridge reuses this local backend.
+Why two new crates rather than modules inside `crates/desktop`: the Google client and the sync/storage layer can be tested on any OS with a fake HTTP server and an in-memory SQLite database, which keeps CI feedback off the Windows runner and keeps the existing rule that domain and layout crates do not depend on GPUI, HTTP or storage. If that testing benefit turns out not to matter, merging `calendar-google` and `calendar-sync` into one crate is a reasonable simplification.
+
+## Migration steps remaining
+
+1. Create `calendar-google` from the porting reference; replace GraphQL-embedded types with plain structs and drop `async-graphql`/`axum` except a minimal loopback listener for the OAuth callback.
+2. Create `calendar-sync`: move the desktop cache and journal out of `service.rs`, add `sync_token` storage per calendar, implement the trigger/coalescing table above.
+3. Rewire `service.rs` to the sync engine; remove the GraphQL query strings and loopback transport.
+4. Add tray-resident mode (drop window on close), then local reminders.
+5. Measure idle working set in both window-open and in-tray states and record the numbers here.
+
+## Time and identifiers
+
+Calendar types use Chrono + chrono-tz. Named-zone conversion is explicit; nonexistent and ambiguous local times produce errors. Events store UTC instants and a named zone. All-day values use midnight boundaries in the display zone with an all-day flag, preserving Google's exclusive end dates. Account-prefixed identifiers keep shared calendars from different accounts separate.
 
 ## UI module map
 
-Desktop `app.rs` owns state and lifecycle; `app/shell.rs` composes the window. `app/navigation.rs`, `gestures.rs`, `editor.rs`, `timeline.rs`, `sidebar.rs`, `settings.rs` and `agenda.rs` own their corresponding interactions and rendering. Shared element builders live in `controls.rs`; headless interaction tests are in `app/tests.rs`.
-
-Web `use-calendar-controller.ts` owns query state and actions. `calendar-app.tsx` composes `calendar-sidebar`, `mini-calendar`, `week-calendar`, `month-calendar`, `calendar-settings` and `event-editor`. Browser snapshot storage has a separate module. Marketing illustrations and their Tailwind utilities live in `product-previews.tsx`, separate from page content. Shared marketing utility strings live in `lib/marketing-styles.ts`; `styles.css` is the single Tailwind entry point for fonts, theme tokens and base defaults.
-
-Mobile `use-mobile-calendar.ts` owns connection, query, preference and reminder state. `calendar-screen.tsx` composes the month, agenda and sheets; `mobile-month`, `mobile-settings` and `mobile-editor` own their views. `components.tsx` contains shared native controls. Platform-specific persistence, native date fields and notification adapters retain their existing `.native.ts` resolution.
-
-Backend `google.rs` owns shared provider state and discovery; `google/authorization.rs`, `credentials.rs`, `events.rs` and `mapping.rs` separate authorization, OS vault access, provider writes/reads and normalization. Provider tests remain isolated with fake HTTP endpoints. Telemetry configuration and telemetry tests are separated from logging/export initialization.
-
-The refactor preserves API schema, event identities, OAuth scopes, storage keys, migration behavior, optimistic write/rollback behavior and notification scheduling. Small domain and storage modules remain cohesive rather than being split just to reduce line counts.
+`app.rs` owns state and lifecycle; `app/shell.rs` composes the window. `app/navigation.rs`, `gestures.rs`, `editor.rs`, `timeline.rs`, `sidebar.rs`, `settings.rs` and `agenda.rs` own their interactions and rendering. Shared element builders live in `controls.rs`; headless interaction tests are in `app/tests.rs`.

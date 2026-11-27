@@ -1,0 +1,32 @@
+[package]
+name = "calendar-sync"
+version.workspace = true
+edition.workspace = true
+
+[features]
+# Lets other crates' tests open an in-memory cache.
+test-support = []
+
+[dependencies]
+calendar-core.workspace = true
+calendar-google = { path = "../calendar-google" }
+chrono.workspace = true
+chrono-tz.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+rusqlite = { version = "0.43", default-features = false, features = ["bundled"] }
+
+[target.'cfg(windows)'.dependencies]
+serde.workspace = true
+serde_json.workspace = true
+windows = { version = "0.61", features = [
+  "Globalization",
+  "Win32_Foundation",
+  "Win32_Security_Credentials",
+  "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+calendar-google = { path = "../calendar-google", features = ["test-support"] }
+serde_json.workspace = true
+uuid.workspace = true

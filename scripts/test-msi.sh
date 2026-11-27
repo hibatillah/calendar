@@ -33,7 +33,7 @@ trap cleanup EXIT
 run_installer /i msi-install.log
 installed=true
 
-for file in calendar-desktop.exe Run-Calendar.cmd .env.example; do
+for file in calendar-desktop.exe calendar-tray.exe Run-Calendar.cmd; do
     [[ -f "$installation_directory/$file" ]] || { printf 'Missing installed file: %s\n' "$file" >&2; exit 1; }
 done
 
@@ -44,7 +44,9 @@ done
 run_installer /x msi-uninstall.log
 installed=false
 
-[[ ! -f "$installation_directory/calendar-desktop.exe" ]] || { printf 'Uninstall left the executable behind.\n' >&2; exit 1; }
+for file in calendar-desktop.exe calendar-tray.exe; do
+    [[ ! -f "$installation_directory/$file" ]] || { printf 'Uninstall left %s behind.\n' "$file" >&2; exit 1; }
+done
 [[ ! -f "$menu_directory/Calendar.lnk" ]] || { printf 'Uninstall left its Start menu shortcut behind.\n' >&2; exit 1; }
 [[ -f "$preserved_file" ]] || { printf 'Uninstall removed user data.\n' >&2; exit 1; }
 

@@ -10,6 +10,7 @@ concurrency:
 jobs:
   desktop:
     uses: ./.github/workflows/ci.yml
+    secrets: inherit
   publish:
     needs: [desktop]
     runs-on: ubuntu-latest
@@ -45,7 +46,7 @@ jobs:
           else
             gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --draft --prerelease \
               --title "Calendar preview ${GITHUB_RUN_NUMBER}" --generate-notes \
-              --notes "Development preview for Windows. Unsigned. Requires your own Google OAuth client; see docs/google.md."
+              --notes "Development preview for Windows. Unsigned. See docs/google.md for Google sign-in."
           fi
           gh release upload "$RELEASE_TAG" release-assets/* --clobber
           gh release edit "$RELEASE_TAG" --draft=false --prerelease

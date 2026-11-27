@@ -64,6 +64,11 @@ jobs:
         with:
           shared-key: windows-release
       - name: Build release and package portable application
+        # The OAuth client is compiled in only for builds from main (the release); pull-request artifacts carry no credentials.
+        # Missing secrets give empty values and a build that reports sign-in as not configured.
+        env:
+          GOOGLE_CLIENT_ID: ${{ github.event_name == 'push' && secrets.GOOGLE_CLIENT_ID || '' }}
+          GOOGLE_CLIENT_SECRET: ${{ github.event_name == 'push' && secrets.GOOGLE_CLIENT_SECRET || '' }}
         run: bash scripts/package-windows.sh
       - uses: actions/setup-dotnet@v4
         with:
@@ -72,6 +77,7 @@ jobs:
         run: |
           dotnet tool install --global wix --version 6.0.2
           wix extension add --global WixToolset.UI.wixext/6.0.2
+          wix extension add --global WixToolset.Util.wixext/6.0.2
       - name: Build MSI installer
         run: |
           $timestamp = [DateTime]::UtcNow

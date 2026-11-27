@@ -29,7 +29,7 @@ license_path="dist/msi/License.rtf"
     printf '}'
 } > "$license_path"
 
-MSYS2_ARG_CONV_EXCL='*' wix build installer/windows/Calendar.wxs -arch x64 -ext WixToolset.UI.wixext \
+MSYS2_ARG_CONV_EXCL='*' wix build installer/windows/Calendar.wxs -arch x64 -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext \
     -d "ProductVersion=$version" \
     -d "LicensePath=$(cygpath -w "$PWD/$license_path")" \
     -d "PackagePath=$(cygpath -w "$PWD/$package_directory")" \

@@ -1,4 +1,5 @@
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
   <Package Name="Calendar" Manufacturer="hibatillah" Version="$(var.ProductVersion)"
            UpgradeCode="AA88641A-078C-443B-AD3C-259B25A04D99" Scope="perMachine">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Calendar is already installed." />
@@ -6,16 +7,21 @@
     <Property Id="ARPCOMMENTS" Value="Calendar desktop app. User data is preserved when uninstalling." />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicensePath)" />
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <!-- Close the running tray and window before files are replaced or removed (upgrade and uninstall). -->
+    <util:CloseApplication Id="CloseTray" Target="calendar-tray.exe" CloseMessage="yes" RebootPrompt="no" TerminateProcess="1" />
+    <util:CloseApplication Id="CloseWindow" Target="calendar-desktop.exe" CloseMessage="yes" RebootPrompt="no" TerminateProcess="1" />
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="Calendar">
         <Component Id="CalendarExecutable" Guid="2C0B7B8E-5B63-4E55-9E5A-1E7B0F6B7A11">
           <File Source="$(var.PackagePath)\calendar-desktop.exe" KeyPath="yes" />
         </Component>
+        <Component Id="CalendarTrayExecutable" Guid="7B1E5C93-D2A4-4F08-9C6B-0E3A8D4F1B55">
+          <File Source="$(var.PackagePath)\calendar-tray.exe" KeyPath="yes" />
+        </Component>
         <Component Id="CalendarLauncher" Guid="6D3F1C2A-0A4B-4E0C-8B7E-3A9C2D5E8F22">
           <File Source="$(var.PackagePath)\Run-Calendar.cmd" KeyPath="yes" />
         </Component>
         <Component Id="CalendarDocuments" Guid="9A7E4D11-3B2C-4F6A-A1D8-5C0E7B9F3A33">
-          <File Source="$(var.PackagePath)\.env.example" />
           <File Source="$(var.PackagePath)\google.md" />
           <File Source="$(var.PackagePath)\LICENSE" />
           <File Source="$(var.PackagePath)\README.md" KeyPath="yes" />
@@ -49,6 +55,7 @@
     </StandardDirectory>
     <Feature Id="CalendarApplication" Title="Calendar" Level="1">
       <ComponentRef Id="CalendarExecutable" />
+      <ComponentRef Id="CalendarTrayExecutable" />
       <ComponentRef Id="CalendarLauncher" />
       <ComponentRef Id="CalendarDocuments" />
       <ComponentRef Id="CalendarFontLicense" />

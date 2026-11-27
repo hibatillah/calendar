@@ -1,7 +1,4 @@
 @echo off
-rem Installed files are read-only; each Windows user keeps configuration and caches under %LOCALAPPDATA%\Calendar.
-set "DATA=%LOCALAPPDATA%\Calendar"
-if not exist "%DATA%" mkdir "%DATA%"
-if not exist "%DATA%\.env" copy "%~dp0.env.example" "%DATA%\.env" >nul
-cd /d "%DATA%"
+rem Starts the tray process (one instance, keeps syncing) and opens the calendar window.
+start "" "%~dp0calendar-tray.exe"
 start "" "%~dp0calendar-desktop.exe"

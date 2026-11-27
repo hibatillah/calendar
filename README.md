@@ -16,9 +16,9 @@ Bring your Google calendars together, plan your week, and keep upcoming events c
 
 ## Project status
 
-Calendar is in active development and Windows is the only supported platform. The app is being moved from a local-backend design to direct Google Calendar access; see [architecture](docs/architecture.md) for the current state, the target layout and the migration steps that remain.
+Calendar is in active development and Windows is the only supported platform. It installs two small programs: `calendar-tray.exe` (tray icon and background sync, always running) and `calendar-desktop.exe` (the window, which exits when closed). Sync and event editing are tested against fake servers only and have not yet been verified with a real Google account; see [architecture](docs/architecture.md).
 
-The preview requires your own Google OAuth client ([setup](docs/google.md)). Releases are unsigned. See [Contributing](CONTRIBUTING.md) for build, test and packaging instructions.
+Sign-in needs a Google OAuth client compiled into the app; to build with your own, follow [setup](docs/google.md). Releases are unsigned. See [Contributing](CONTRIBUTING.md) for build, test and packaging instructions.
 
 ## License
 

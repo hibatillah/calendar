@@ -1,0 +1,21 @@
+[package]
+name = "calendar-google"
+version.workspace = true
+edition.workspace = true
+
+[features]
+# Lets other crates' tests point the client at a local fake server.
+test-support = []
+
+[dependencies]
+calendar-core.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+ureq = { version = "3.5", default-features = false, features = ["rustls", "json"] }
+sha2 = "0.10"
+base64 = "0.22"
+percent-encoding = "2"

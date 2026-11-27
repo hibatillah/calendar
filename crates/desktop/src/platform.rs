@@ -1,34 +1,27 @@
 use gpui_kit::*;
-use tray_icon::{
-    Icon, TrayIcon, TrayIconBuilder,
-    menu::{Menu, MenuItem},
-};
-
-pub fn create_tray() -> Result<TrayIcon, Box<dyn std::error::Error>> {
-    let menu = Menu::new();
-    menu.append_items(&[
-        &MenuItem::with_id("agenda", "Upcoming schedule", true, None),
-        &MenuItem::with_id("open", "Open Calendar", true, None),
-        &MenuItem::with_id("quit", "Quit Calendar", true, None),
-    ])?;
-    let mut pixels = Vec::new();
-    for vertical in 0..32 {
-        for horizontal in 0..32 {
-            let distance = (horizontal as f32 - 15.5).powi(2) + (vertical as f32 - 15.5).powi(2);
-            let inside = (30.0..180.0).contains(&distance);
-            pixels.extend_from_slice(&[183, 180, 239, if inside { 255 } else { 0 }]);
-        }
-    }
-    Ok(TrayIconBuilder::new()
-        .with_tooltip("Calendar · upcoming schedule")
-        .with_icon(Icon::from_rgba(pixels, 32, 32)?)
-        .with_menu(Box::new(menu))
-        .with_menu_on_left_click(false)
-        .build()?)
-}
 
 pub fn backdrop() -> WindowBackgroundAppearance {
     WindowBackgroundAppearance::Opaque
+}
+
+/// Brings the main window of the UI process that already runs to the front. Does nothing when
+/// that process only shows the tray agenda popup, which has no title.
+pub fn focus_existing_window() {
+    use windows::{
+        Win32::UI::WindowsAndMessaging::{
+            FindWindowW, IsIconic, SW_RESTORE, SetForegroundWindow, ShowWindow,
+        },
+        core::HSTRING,
+    };
+    // SAFETY: plain Win32 calls with a valid wide string; a missing window yields an error.
+    unsafe {
+        if let Ok(window) = FindWindowW(None, &HSTRING::from(crate::WINDOW_TITLE)) {
+            if IsIconic(window).as_bool() {
+                let _ = ShowWindow(window, SW_RESTORE);
+            }
+            let _ = SetForegroundWindow(window);
+        }
+    }
 }
 
 pub fn agenda_bounds(context: &App) -> Bounds<Pixels> {

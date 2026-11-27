@@ -6,23 +6,22 @@ impl CalendarApp {
         window: &Window,
         context: &mut Context<Self>,
     ) -> impl IntoElement {
-        let width =
-            (f32::from(window.viewport_size().width) - self.sidebar_width() - GUTTER).max(560.0);
-        let day_width = width / 7.0;
+        let day_width = self.day_width(window);
+        let width = day_width * 7.0;
         let first_date = self.date;
         let visible: Vec<_> = self
-            .events
+            .events()
             .iter()
-            .chain(
-                self.selected
-                    .iter()
-                    .filter(|event| event.revision < 0 && !self.pending),
-            )
             .filter(|event| self.calendar_visible(event))
             .cloned()
             .collect();
         let placements = range_layout(&visible, first_date, 8, self.timezone);
         let mut grid = div().relative().w(px(width + GUTTER)).h(px(24.0 * HOUR));
+        grid = grid.child(self.off_hours_layer(
+            first_date,
+            day_width,
+            self.horizontal_fraction * day_width,
+        ));
         for hour in 0..24 {
             grid = grid.child(
                 div()
@@ -63,24 +62,10 @@ impl CalendarApp {
                     .h_full()
                     .border_l_1()
                     .border_color(rgb(0xffffff).opacity(0.06))
-                    .cursor_crosshair()
                     .on_mouse_down(
                         MouseButton::Left,
-                        context.listener(move |app, event: &MouseDownEvent, _, context| {
-                            let relative = f32::from(event.position.y)
-                                - HEADER
-                                - f32::from(app.scroll.offset().y);
-                            let minute =
-                                (snap_minutes(relative * 60.0 / HOUR).clamp(0, 1425)) as u32;
-                            let mut new_event =
-                                app.new_event(first_date + Duration::days(day as i64), minute);
-                            new_event.end = new_event.start + Duration::minutes(30);
-                            app.begin_gesture(
-                                new_event,
-                                GestureKind::Create,
-                                event.position,
-                                context,
-                            );
+                        context.listener(|app, event: &MouseDownEvent, window, context| {
+                            app.begin_create(event.position, window, context)
                         }),
                     ),
             );
@@ -95,9 +80,9 @@ impl CalendarApp {
             };
             let event_width = (day_width - 7.0) / placement.column_count as f32;
             let height = ((placement.end_minute - placement.start_minute) * HOUR / 60.0).max(22.0);
-            let move_event = event.clone();
-            let start_event = event.clone();
-            let end_event = event.clone();
+            let drag_event = event.clone();
+            let resize_event = event.clone();
+            let saving = self.is_saving(&event.event_id);
             days_grid = days_grid.child(
                 div()
                     .id(SharedString::from(format!(
@@ -123,36 +108,39 @@ impl CalendarApp {
                     .border_l_2()
                     .border_color(rgb(event.color))
                     .cursor_pointer()
+                    .when(saving, |element| element.opacity(0.6))
                     .hover(|style| style.bg(rgb(event_surface(event.color))))
                     .on_mouse_down(
                         MouseButton::Left,
-                        context.listener(move |app, mouse: &MouseDownEvent, _, context| {
+                        context.listener(move |app, event: &MouseDownEvent, _, context| {
                             context.stop_propagation();
                             app.begin_gesture(
-                                move_event.clone(),
                                 GestureKind::Move,
-                                mouse.position,
+                                drag_event.clone(),
+                                event.position,
                                 context,
-                            );
+                            )
                         }),
                     )
                     .child(
                         div()
+                            .id(SharedString::from(format!("resize-{}", event.event_id)))
                             .absolute()
-                            .top_0()
+                            .bottom_0()
+                            .left_0()
                             .w_full()
                             .h(px(6.0))
-                            .cursor_ns_resize()
+                            .cursor_row_resize()
                             .on_mouse_down(
                                 MouseButton::Left,
-                                context.listener(move |app, mouse: &MouseDownEvent, _, context| {
+                                context.listener(move |app, event: &MouseDownEvent, _, context| {
                                     context.stop_propagation();
                                     app.begin_gesture(
-                                        start_event.clone(),
-                                        GestureKind::Start,
-                                        mouse.position,
+                                        GestureKind::Resize,
+                                        resize_event.clone(),
+                                        event.position,
                                         context,
-                                    );
+                                    )
                                 }),
                             ),
                     )
@@ -171,36 +159,23 @@ impl CalendarApp {
                                         .text_color(rgb(event.color))
                                         .text_size(px(10.0))
                                         .font_weight(FontWeight::NORMAL)
-                                        .child(format!(
-                                            "{} – {}",
-                                            event
-                                                .start
-                                                .with_timezone(&self.timezone)
-                                                .format("%H:%M"),
-                                            event.end.with_timezone(&self.timezone).format("%H:%M")
-                                        )),
+                                        .child(if saving {
+                                            "Saving…".to_owned()
+                                        } else {
+                                            format!(
+                                                "{} – {}",
+                                                event
+                                                    .start
+                                                    .with_timezone(&self.timezone)
+                                                    .format("%H:%M"),
+                                                event
+                                                    .end
+                                                    .with_timezone(&self.timezone)
+                                                    .format("%H:%M")
+                                            )
+                                        }),
                                 )
                             }),
-                    )
-                    .child(
-                        div()
-                            .absolute()
-                            .bottom_0()
-                            .w_full()
-                            .h(px(7.0))
-                            .cursor_ns_resize()
-                            .on_mouse_down(
-                                MouseButton::Left,
-                                context.listener(move |app, mouse: &MouseDownEvent, _, context| {
-                                    context.stop_propagation();
-                                    app.begin_gesture(
-                                        end_event.clone(),
-                                        GestureKind::End,
-                                        mouse.position,
-                                        context,
-                                    );
-                                }),
-                            ),
                     ),
             );
         }
@@ -232,6 +207,7 @@ impl CalendarApp {
     pub(super) fn month_grid(&self, context: &mut Context<Self>) -> impl IntoElement {
         let cells = self.display_month_cells();
         let today = Utc::now().with_timezone(&self.timezone).date_naive();
+        let all_events = self.events();
         div()
             .flex_1()
             .min_h_0()
@@ -261,8 +237,7 @@ impl CalendarApp {
                     .flex()
                     .children(dates.iter().enumerate().map(|(column, date)| {
                         let date = *date;
-                        let mut events: Vec<_> = self
-                            .events
+                        let mut events: Vec<_> = all_events
                             .iter()
                             .filter(|event| {
                                 (self.calendar_visible(event))
@@ -286,10 +261,6 @@ impl CalendarApp {
                             .border_t_1()
                             .border_l_1()
                             .border_color(rgb(0x242424))
-                            .on_click(context.listener(move |app, _, window, context| {
-                                let event = app.new_event(date, 540);
-                                app.edit(event, window, context);
-                            }))
                             .child(
                                 div().flex().justify_end().p_1().flex_shrink_0().child(
                                     div()
@@ -354,9 +325,9 @@ impl CalendarApp {
                                                 event.title
                                             ))
                                             .on_click(context.listener(
-                                                move |app, _, window, context| {
+                                                move |app, _, _, context| {
                                                     context.stop_propagation();
-                                                    app.edit(event.clone(), window, context);
+                                                    app.show_details(event.clone(), context);
                                                 },
                                             ))
                                     })),

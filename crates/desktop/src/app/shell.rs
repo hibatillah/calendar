@@ -12,20 +12,9 @@ impl Render for CalendarApp {
             .text_size(px(13.0))
             .bg(rgb(0x191919))
             .font_family("Inter")
-            .on_mouse_move(
-                context.listener(|app, event: &MouseMoveEvent, window, context| {
-                    app.move_gesture(event.position, window, context)
-                }),
-            )
-            .on_mouse_up(
-                MouseButton::Left,
-                context.listener(|app, _, window, context| app.finish_gesture(window, context)),
-            )
             .on_key_down(
                 context.listener(|app, event: &KeyDownEvent, window, context| {
                     if app.selected.is_none()
-                        && app.gesture.is_none()
-                        && !app.activity_open
                         && !app.settings_open
                         && !app.profile_open
                         && !event.keystroke.modifiers.control
@@ -44,16 +33,10 @@ impl Render for CalendarApp {
                     }
                     if event.keystroke.key == "escape" {
                         app.view_menu_open = false;
-                        app.settings_open = false;
+                        app.close_settings();
                         app.profile_open = false;
-                        if let Some(gesture) = app.gesture.take() {
-                            app.events
-                                .retain(|event| event.event_id != gesture.event.event_id);
-                            if gesture.event.revision >= 0 {
-                                app.events.push(gesture.event);
-                            }
-                        }
-                        app.selected = None;
+                        app.close_editor();
+                        app.gesture = None;
                         if app.agenda_only {
                             window.remove_window();
                         } else {
@@ -62,11 +45,22 @@ impl Render for CalendarApp {
                         }
                     }
                 }),
+            )
+            .on_mouse_move(
+                context.listener(|app, event: &MouseMoveEvent, window, context| {
+                    app.move_gesture(event.position, window, context)
+                }),
+            )
+            .on_mouse_up(
+                MouseButton::Left,
+                context.listener(|app, _, window, context| app.finish_gesture(window, context)),
             );
         if self.agenda_only {
             return root.child(self.agenda(context)).into_any_element();
         }
         let first_date = self.date;
+        let notices = self.notices();
+        let all_events = self.events();
         let day_width = ((f32::from(window.viewport_size().width) - self.sidebar_width() - GUTTER)
             / 7.0)
             .max(80.0);
@@ -140,6 +134,19 @@ impl Render for CalendarApp {
                                                     .size(px(16.0))
                                                     .text_color(rgb(0xbdbdbd)),
                                             ),
+                                    )
+                                    .child(
+                                        button("new-event", "New")
+                                            .px_3()
+                                            .bg(rgb(0x272727))
+                                            .border_1()
+                                            .border_color(rgb(0x343434))
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .on_click(context.listener(
+                                                |app, _, window, context| {
+                                                    app.new_event(window, context)
+                                                },
+                                            )),
                                     )
                                     .child(
                                         button("today", "Today")
@@ -314,7 +321,7 @@ impl Render for CalendarApp {
                                                     .w(px(day_width))
                                                     .overflow_hidden()
                                                     .children(
-                                                        self.events
+                                                        all_events
                                                             .iter()
                                                             .filter(|event| {
                                                                 event.all_day
@@ -349,10 +356,9 @@ impl Render for CalendarApp {
                                                         .cursor_pointer()
                                                         .child(event.title.clone())
                                                         .on_click(context.listener(
-                                                            move |app, _, window, context| {
-                                                                app.edit(
+                                                            move |app, _, _, context| {
+                                                                app.show_details(
                                                                     event.clone(),
-                                                                    window,
                                                                     context,
                                                                 )
                                                             },
@@ -367,27 +373,21 @@ impl Render for CalendarApp {
                     .when(self.month_view, |element| {
                         element.child(self.month_grid(context))
                     })
-                    .when(
-                        self.pending
-                            || self.message.contains("not configured")
-                            || self.message.contains("failed")
-                            || self.message.contains("unavailable"),
-                        |element| {
-                            element.child(
-                                div()
-                                    .absolute()
-                                    .bottom_3()
-                                    .right_3()
-                                    .max_w(px(420.0))
-                                    .p_3()
-                                    .rounded_md()
-                                    .bg(rgb(0x303030))
-                                    .text_size(px(11.0))
-                                    .text_color(rgb(INK))
-                                    .child(self.message.clone()),
-                            )
-                        },
-                    ),
+                    .when(!notices.is_empty(), |element| {
+                        element.child(
+                            div()
+                                .absolute()
+                                .bottom_3()
+                                .right_3()
+                                .max_w(px(420.0))
+                                .p_3()
+                                .rounded_md()
+                                .bg(rgb(0x303030))
+                                .text_size(px(11.0))
+                                .text_color(rgb(INK))
+                                .children(notices.into_iter().map(|notice| div().child(notice))),
+                        )
+                    }),
             );
         if self.view_menu_open {
             root = root.child(
@@ -410,46 +410,27 @@ impl Render for CalendarApp {
             );
         }
         if !self.agenda_only {
-            let account = self.google_connection.accounts.get(self.active_account);
+            let initial = self
+                .snapshot
+                .accounts
+                .get(self.active_account)
+                .and_then(|account| {
+                    account
+                        .name
+                        .chars()
+                        .next()
+                        .or_else(|| account.email.chars().next())
+                })
+                .unwrap_or('G')
+                .to_string();
             let avatar = div()
                 .size(px(28.0))
                 .rounded_full()
-                .overflow_hidden()
                 .bg(rgb(0x3c526a))
-                .when_some(
-                    account.filter(|account| !account.picture.is_empty()),
-                    |element, account| {
-                        element.child(
-                            img(std::path::PathBuf::from(account.picture.clone()))
-                                .size_full()
-                                .object_fit(ObjectFit::Cover),
-                        )
-                    },
-                )
-                .when(
-                    account.is_none_or(|account| account.picture.is_empty()),
-                    |element| {
-                        element.child(
-                            div()
-                                .size_full()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    account
-                                        .and_then(|account| {
-                                            account
-                                                .name
-                                                .chars()
-                                                .next()
-                                                .or_else(|| account.email.chars().next())
-                                        })
-                                        .unwrap_or('G')
-                                        .to_string(),
-                                ),
-                        )
-                    },
-                );
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(initial);
             root = root.child(
                 div()
                     .id("profile-toggle")
@@ -478,10 +459,11 @@ impl Render for CalendarApp {
             root = root.child(self.settings(context));
         }
         if self.selected.is_some() && !self.settings_open {
-            root = root.child(self.editor(context));
-        }
-        if self.activity_open && !self.settings_open {
-            root = root.child(self.activity_panel(context));
+            root = if self.editor.is_some() {
+                root.child(self.editor_view(context))
+            } else {
+                root.child(self.details(context))
+            };
         }
         root.into_any_element()
     }

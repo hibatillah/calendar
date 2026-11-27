@@ -46,14 +46,6 @@ impl CalendarApp {
                             .on_mouse_down(MouseButton::Left, |_, window, _| {
                                 window.start_window_move()
                             }),
-                    )
-                    .child(
-                        icon_button("new-event", "icons/square-pen.svg")
-                            .text_color(rgb(MUTED))
-                            .on_click(context.listener(|app, _, window, context| {
-                                let event = app.new_event(app.date, 540);
-                                app.edit(event, window, context);
-                            })),
                     ),
             )
             .child(
@@ -157,7 +149,7 @@ impl CalendarApp {
                     .min_h_0()
                     .overflow_y_scroll()
                     .children(
-                        self.google_connection
+                        self.snapshot
                             .accounts
                             .iter()
                             .filter(|account| !account.calendars.is_empty())
@@ -175,21 +167,21 @@ impl CalendarApp {
                                     )
                                     .child(div().px_2().children(account.calendars.iter().map(
                                         |calendar| {
-                                            let calendar_id = calendar.id.clone();
+                                            let calendar_key = calendar.key.clone();
                                             calendar_toggle(
                                                 SharedString::from(format!(
                                                     "calendar-{}",
-                                                    calendar.id
+                                                    calendar.key
                                                 )),
                                                 SharedString::from(calendar.summary.clone()),
-                                                calendar.color(),
-                                                !self.hidden_calendars.contains(&calendar.id),
+                                                calendar.color,
+                                                !self.hidden_calendars.contains(&calendar.key),
                                             )
                                             .on_click(
                                                 context.listener(move |app, _, _, context| {
-                                                    if !app.hidden_calendars.remove(&calendar_id) {
+                                                    if !app.hidden_calendars.remove(&calendar_key) {
                                                         app.hidden_calendars
-                                                            .insert(calendar_id.clone());
+                                                            .insert(calendar_key.clone());
                                                     }
                                                     tracing::info!(
                                                         action = "calendar_visibility_changed"
@@ -201,172 +193,6 @@ impl CalendarApp {
                                     )))
                             }),
                     ),
-            )
-            .child(
-                button("activity-open", "Activity")
-                    .mx_2()
-                    .text_color(rgb(MUTED))
-                    .on_click(context.listener(|app, _, _, context| {
-                        app.activity_open = !app.activity_open;
-                        calendar_telemetry::track("screen_viewed", "activity");
-                        context.notify();
-                    })),
-            )
-    }
-
-    pub(super) fn activity_panel(&self, context: &mut Context<Self>) -> impl IntoElement {
-        let mut records = calendar_telemetry::recent_logs();
-        records.extend(self.backend_logs.iter().cloned());
-        records.sort_by(|left, right| right.timestamp.cmp(&left.timestamp));
-        records.retain(|record| {
-            !self.activity_errors_only || matches!(record.level.as_str(), "WARN" | "ERROR")
-        });
-        div()
-            .absolute()
-            .top(px(52.0))
-            .bottom_3()
-            .right_3()
-            .w(px(400.0))
-            .occlude()
-            .on_scroll_wheel(|_, _, context| context.stop_propagation())
-            .flex()
-            .flex_col()
-            .bg(rgb(0x242424))
-            .border_1()
-            .border_color(rgb(0x3b3b3b))
-            .rounded_lg()
-            .shadow_lg()
-            .on_mouse_down(MouseButton::Left, |_, _, context| {
-                context.stop_propagation()
-            })
-            .child(
-                div()
-                    .p_3()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .child("Activity & diagnostics"),
-                    )
-                    .child(button("activity-close", "Close").on_click(context.listener(
-                        |app, _, _, context| {
-                            app.activity_open = false;
-                            context.notify();
-                        },
-                    ))),
-            )
-            .child(
-                div()
-                    .px_3()
-                    .pb_2()
-                    .text_size(px(11.0))
-                    .text_color(rgb(MUTED))
-                    .child(calendar_telemetry::status()),
-            )
-            .child(
-                div()
-                    .px_3()
-                    .pb_2()
-                    .flex()
-                    .gap_2()
-                    .child(
-                        button(
-                            "activity-filter",
-                            if self.activity_errors_only {
-                                "Warnings & errors"
-                            } else {
-                                "All activity"
-                            },
-                        )
-                        .on_click(context.listener(
-                            |app, _, _, context| {
-                                app.activity_errors_only = !app.activity_errors_only;
-                                context.notify();
-                            },
-                        )),
-                    )
-                    .child(
-                        button("activity-copy", "Copy diagnostics").on_click(context.listener(
-                            |app, _, _, context| {
-                                let mut records = calendar_telemetry::recent_logs();
-                                records.extend(app.backend_logs.iter().cloned());
-                                if let Ok(text) = serde_json::to_string_pretty(&records) {
-                                    context.write_to_clipboard(ClipboardItem::new_string(text));
-                                }
-                                calendar_telemetry::track("control_clicked", "copy_diagnostics");
-                            },
-                        )),
-                    ),
-            )
-            .child(
-                div()
-                    .px_3()
-                    .pb_2()
-                    .text_size(px(10.0))
-                    .text_color(rgb(MUTED))
-                    .child(if self.online {
-                        "Live desktop · backend refreshes every 5s · newest first"
-                    } else {
-                        "Live desktop · backend disconnected; last received logs shown"
-                    }),
-            )
-            .child(
-                div()
-                    .id("activity-entries")
-                    .debug_selector(|| "activity-entries".into())
-                    .track_scroll(&self.activity_scroll)
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .px_3()
-                    .when(records.is_empty(), |element| {
-                        element.child(
-                            div()
-                                .py_4()
-                                .text_color(rgb(MUTED))
-                                .child("No matching activity yet."),
-                        )
-                    })
-                    .children(records.into_iter().take(500).map(|record| {
-                        let details = record
-                            .details
-                            .iter()
-                            .map(|(key, value)| format!("{key}: {value}"))
-                            .collect::<Vec<_>>()
-                            .join(" · ");
-                        div()
-                            .py_2()
-                            .border_b_1()
-                            .border_color(rgb(0x333333))
-                            .child(
-                                div()
-                                    .text_size(px(10.0))
-                                    .text_color(rgb(if record.level == "ERROR" {
-                                        0xf08080
-                                    } else {
-                                        MUTED
-                                    }))
-                                    .child(format!(
-                                        "{}   {}   {}",
-                                        record.timestamp, record.component, record.level
-                                    )),
-                            )
-                            .child(
-                                div()
-                                    .text_size(px(12.0))
-                                    .child(record.action.replace('_', " ")),
-                            )
-                            .when(!details.is_empty(), |element| {
-                                element.child(
-                                    div()
-                                        .text_size(px(10.0))
-                                        .text_color(rgb(MUTED))
-                                        .child(details),
-                                )
-                            })
-                    })),
             )
     }
 }

@@ -1,308 +1,175 @@
+mod accounts;
 mod agenda;
 mod controls;
+mod details;
 mod editor;
 mod gestures;
 mod navigation;
+mod notices;
+mod preferences;
 mod settings;
 mod shell;
 mod sidebar;
 mod timeline;
+mod working_hours;
+mod writes;
 
-use crate::service::{self, Request, Update};
-use calendar_core::{CalendarEvent, EventCommand, resolve_local};
-use calendar_layout::{range_layout, snap_minutes};
+use crate::service::{Handle, Model, SignInState, Snapshot, snapshot::CalendarView};
+use calendar_core::CalendarEvent;
+use calendar_layout::range_layout;
 use chrono::{Datelike, Duration, NaiveDate, Timelike, Utc};
 use chrono_tz::Tz;
-use controls::{button, calendar_toggle, event_surface, field, icon_button};
-use gpui_kit::{
-    component::{
-        TitleBar,
-        input::{Input, InputState},
-    },
-    prelude::*,
-    *,
-};
-
-#[derive(Default, serde::Serialize, serde::Deserialize)]
-#[serde(default)]
-struct Preferences {
-    sunday_first: bool,
-    tray_all_day: bool,
-}
-
-impl Preferences {
-    fn load() -> Self {
-        std::fs::read_to_string(".local/preferences.json")
-            .ok()
-            .and_then(|value| serde_json::from_str(&value).ok())
-            .unwrap_or(Self {
-                sunday_first: false,
-                tray_all_day: true,
-            })
-    }
-
-    fn save(&self) {
-        let _ = std::fs::write(".local/preferences.json", serde_json::to_vec(self).unwrap());
-    }
-}
+use controls::{button, calendar_toggle, event_surface, field, icon_button, note, popover};
+use editor::Editor;
+use gestures::{Gesture, GestureKind};
+use gpui_kit::{component::TitleBar, prelude::*, *};
+pub use preferences::Preferences;
+use std::sync::Arc;
+use writes::InFlight;
 
 const SIDEBAR: f32 = 240.0;
 const GUTTER: f32 = 68.0;
-const HEADER: f32 = 132.0;
 const HOUR: f32 = 48.0;
 const INK: u32 = 0xe9e9e9;
 const MUTED: u32 = 0x969696;
-const ACCENT: u32 = 0xbdbdbd;
-
-#[derive(Clone, Copy)]
-enum GestureKind {
-    Move,
-    Start,
-    End,
-    Create,
-}
-
-struct Gesture {
-    kind: GestureKind,
-    event: CalendarEvent,
-    origin: Point<Pixels>,
-    changed: bool,
-}
+const PANEL: u32 = 0x262626;
+const FIELD: u32 = 0x303030;
+const ACCENT: u32 = 0x51a2ff;
+const ON_ACCENT: u32 = 0x0a0a0a;
+const DANGER: u32 = 0xf87171;
+const BORDER: u32 = 0x393939;
+const NAVIGATION: u32 = 0x202020;
+const DIALOG: u32 = 0x242424;
+/// Background of hours outside the working hours: slightly darker than the main surface.
+const OFF_HOURS: u32 = 0x131313;
+const RECURRING_NOTE: &str = "Recurring event: changes apply to this occurrence only.";
 
 pub struct CalendarApp {
     preferences: Preferences,
     settings_open: bool,
     settings_section: String,
+    working_form: Option<working_hours::WorkingForm>,
     profile_open: bool,
     active_account: usize,
-    events: Vec<CalendarEvent>,
+    snapshot: Arc<Snapshot>,
+    syncing: bool,
+    sign_in: SignInState,
+    store_error: Option<String>,
+    handle: Handle,
     date: NaiveDate,
     horizontal_fraction: f32,
     sidebar_open: bool,
     month_view: bool,
     view_menu_open: bool,
     timezone: Tz,
-    connection: service::Connection,
-    online: bool,
-    google_connection: service::GoogleConnection,
-    message: String,
     selected: Option<CalendarEvent>,
-    title: Entity<InputState>,
-    date_input: Entity<InputState>,
-    start_input: Entity<InputState>,
-    end_input: Entity<InputState>,
-    end_date_input: Entity<InputState>,
-    location_input: Entity<InputState>,
-    description_input: Entity<InputState>,
-    scroll: ScrollHandle,
-    activity_scroll: ScrollHandle,
+    editor: Option<Editor>,
     gesture: Option<Gesture>,
+    /// Writes sent and not finished; see `writes.rs`.
+    writes: Vec<InFlight>,
+    /// Why the last write without an open form did not finish.
+    write_notice: Option<String>,
+    scroll: ScrollHandle,
     focus: FocusHandle,
     hidden_calendars: std::collections::HashSet<String>,
-    syncing: bool,
-    sync_error: Option<String>,
-    requested_month: Option<NaiveDate>,
-    pending: bool,
-    pending_change: Option<(String, Option<CalendarEvent>)>,
     pub agenda_only: bool,
-    activity_open: bool,
-    activity_errors_only: bool,
-    backend_logs: Vec<calendar_telemetry::LogEntry>,
 }
 
 impl CalendarApp {
-    pub fn open_event(
-        &mut self,
-        event: CalendarEvent,
-        window: &mut Window,
-        context: &mut Context<Self>,
-    ) {
-        self.date = event.start.with_timezone(&self.timezone).date_naive();
-        self.horizontal_fraction = 0.0;
-        self.edit(event, window, context);
+    pub fn open_settings(&mut self, context: &mut Context<Self>) {
+        self.settings_open = true;
+        context.notify();
     }
 
-    pub fn new(window: &mut Window, context: &mut Context<Self>, agenda_only: bool) -> Self {
-        let timezone = chrono_tz::Asia::Jakarta;
-        let preferences = Preferences::load();
+    pub fn open_event(&mut self, event: CalendarEvent, context: &mut Context<Self>) {
+        self.date = event.start.with_timezone(&self.timezone).date_naive();
+        self.horizontal_fraction = 0.0;
+        self.show_details(event, context);
+    }
+
+    pub fn new(
+        window: &mut Window,
+        context: &mut Context<Self>,
+        agenda_only: bool,
+        model: Entity<Model>,
+        handle: Handle,
+        preferences: Preferences,
+    ) -> Self {
+        // Until the first snapshot arrives with the cache's zone.
+        let timezone = calendar_sync::system_zone().unwrap_or(Tz::UTC);
         let today = Utc::now().with_timezone(&timezone).date_naive();
         let date = week_start(today, preferences.sunday_first);
-        let title =
-            context.new(|context| InputState::new(window, context).placeholder("Event title"));
-        let date_input =
-            context.new(|context| InputState::new(window, context).placeholder("YYYY-MM-DD"));
-        let start_input =
-            context.new(|context| InputState::new(window, context).placeholder("09:00"));
-        let end_input =
-            context.new(|context| InputState::new(window, context).placeholder("10:00"));
-        let end_date_input =
-            context.new(|context| InputState::new(window, context).placeholder("YYYY-MM-DD"));
-        let location_input = context.new(|context| {
-            InputState::new(window, context).placeholder("Location or meeting link")
-        });
-        let description_input =
-            context.new(|context| InputState::new(window, context).placeholder("Description"));
         let focus = context.focus_handle();
         focus.focus(window, context);
         let scroll = ScrollHandle::new();
         scroll.set_offset(point(px(0.0), px(-7.0 * HOUR)));
         context
-            .spawn(async |entity, context| {
-                loop {
-                    context
-                        .background_executor()
-                        .timer(std::time::Duration::from_millis(120))
-                        .await;
-                    if entity
-                        .update(context, |app, context| {
-                            app.poll(context);
-                        })
-                        .is_err()
-                    {
-                        break;
-                    }
+            .observe(&model, |app, model, context| {
+                let finished = model.update(context, |model, _| {
+                    std::mem::take(&mut model.finished_writes)
+                });
+                app.copy_model(model.read(context));
+                for result in finished {
+                    app.finish_write(result, context);
+                }
+                app.settle_writes();
+                context.notify();
+            })
+            .detach();
+        context
+            .observe_window_activation(window, |app, window, _| {
+                if app.agenda_only && !window.is_window_active() {
+                    window.remove_window();
+                } else if !app.agenda_only && window.is_window_active() {
+                    app.handle.sync_now();
                 }
             })
             .detach();
-        if agenda_only {
-            context
-                .observe_window_activation(window, |_, window, _| {
-                    if !window.is_window_active() {
-                        window.remove_window();
-                    }
-                })
-                .detach();
-        }
 
-        #[cfg(not(test))]
-        let connection = service::start();
-        #[cfg(test)]
-        let connection = service::disconnected();
-        calendar_telemetry::track(
-            "screen_viewed",
-            if agenda_only {
-                "tray_agenda"
-            } else {
-                "week_calendar"
-            },
-        );
-        Self {
+        let mut app = Self {
             preferences,
             settings_open: false,
             settings_section: "general".into(),
+            working_form: None,
             profile_open: false,
             active_account: 0,
-            activity_open: false,
-            activity_errors_only: false,
-            backend_logs: Vec::new(),
-            events: Vec::new(),
+            snapshot: Arc::default(),
+            syncing: false,
+            sign_in: SignInState::Idle,
+            store_error: None,
+            handle,
             date,
             horizontal_fraction: 0.0,
             sidebar_open: true,
             month_view: false,
             view_menu_open: false,
             timezone,
-            connection,
-            online: false,
-            google_connection: service::GoogleConnection::default(),
-            message: "Connecting to the local backend…".into(),
             selected: None,
-            title,
-            date_input,
-            start_input,
-            end_input,
-            end_date_input,
-            location_input,
-            description_input,
-            scroll,
-            activity_scroll: ScrollHandle::new(),
+            editor: None,
             gesture: None,
+            writes: Vec::new(),
+            write_notice: None,
+            scroll,
             focus,
             hidden_calendars: Default::default(),
-            syncing: false,
-            sync_error: None,
-            requested_month: None,
-            pending: false,
-            pending_change: None,
             agenda_only,
-        }
+        };
+        app.copy_model(model.read(context));
+
+        app
     }
 
-    fn poll(&mut self, context: &mut Context<Self>) {
-        let month = self.date.with_day(1).unwrap();
-        if self.requested_month != Some(month) {
-            let _ = self.connection.sender.send(Request::ViewMonth(month));
-            self.requested_month = Some(month);
+    fn copy_model(&mut self, model: &Model) {
+        self.snapshot = model.snapshot.clone();
+        if let Some(zone) = self.snapshot.zone {
+            self.timezone = zone;
         }
-        let mut changed = false;
-        while let Ok(update) = self.connection.receiver.try_recv() {
-            match update {
-                Update::GoogleConnection(connection) => {
-                    if connection.account_key != self.google_connection.account_key {
-                        self.hidden_calendars.clear();
-                    }
-                    self.google_connection = connection;
-                }
-                Update::SyncStatus(syncing, error) => {
-                    self.syncing = syncing;
-                    self.sync_error = error;
-                }
-                Update::GoogleError(error) => {
-                    self.google_connection.message = error;
-                    self.google_connection.connecting = false;
-                }
-                Update::AuthorizationUrl(url) => {
-                    if url.starts_with("https://accounts.google.com/o/oauth2/v2/auth?") {
-                        context.open_url(&url);
-                        self.google_connection.connecting = true;
-                        self.google_connection.message =
-                            "Finish Google sign-in in your browser.".into();
-                    }
-                }
-                Update::Diagnostics(records) => self.backend_logs = records,
-                Update::Snapshot(events, online) => {
-                    if self.gesture.is_none() && !self.pending {
-                        self.events = events;
-                    }
-                    if self.online != online {
-                        tracing::info!(action = "connection_changed", online);
-                    }
-                    self.online = online;
-                    if self.message.starts_with("Connecting") {
-                        self.message = "Your week, with a little more room.".into();
-                    }
-                }
-                Update::Saved(event) => {
-                    if let Some((identifier, _)) = &self.pending_change {
-                        self.events
-                            .retain(|existing| &existing.event_id != identifier);
-                    }
-                    self.events
-                        .retain(|existing| existing.event_id != event.event_id);
-                    self.events.push(event);
-                    self.pending = false;
-                    self.pending_change = None;
-                    self.message = "Saved to Google Calendar.".into();
-                    self.selected = None;
-                    calendar_telemetry::track("event_save_completed", "calendar");
-                }
-                Update::Failed(error) => {
-                    self.rollback_pending_change();
-                    self.message = format!("Save failed: {error}");
-                    calendar_telemetry::report_error("calendar_worker_failed");
-                }
-                Update::Status(online) => {
-                    if self.online != online {
-                        tracing::info!(action = "connection_changed", online);
-                    }
-                    self.online = online;
-                }
-            }
-            changed = true;
-        }
-        if changed || self.activity_open {
-            context.notify();
-        }
+        self.syncing = model.syncing;
+        self.sign_in = model.sign_in.clone();
+        self.store_error = model.error.clone();
+        self.active_account = self
+            .active_account
+            .min(self.snapshot.accounts.len().saturating_sub(1));
     }
 
     fn calendar_visible(&self, event: &CalendarEvent) -> bool {
@@ -312,6 +179,10 @@ impl CalendarApp {
 
 #[cfg(all(test, feature = "ui-tests"))]
 mod tests;
+#[cfg(all(test, feature = "ui-tests"))]
+mod working_hours_tests;
+#[cfg(all(test, feature = "ui-tests"))]
+mod write_tests;
 
 fn week_start(date: NaiveDate, sunday_first: bool) -> NaiveDate {
     let offset = if sunday_first {

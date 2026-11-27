@@ -39,13 +39,6 @@ impl CalendarEvent {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct EventCommand {
-    pub operation_id: String,
-    pub expected_revision: i64,
-    pub event: CalendarEvent,
-}
-
 pub fn monday(date: NaiveDate) -> NaiveDate {
     date - Duration::days(date.weekday().num_days_from_monday().into())
 }

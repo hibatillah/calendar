@@ -5,6 +5,7 @@ impl CalendarApp {
         let now = Utc::now();
         let today = now.with_timezone(&self.timezone).date_naive();
         let mut events: Vec<_> = self
+            .snapshot
             .events
             .iter()
             .filter(|event| {
@@ -48,10 +49,17 @@ impl CalendarApp {
                     .child(format!(
                         "{} · {}",
                         today.format("%A, %d %B"),
-                        if self.online {
-                            "Local preview"
+                        if self
+                            .snapshot
+                            .accounts
+                            .iter()
+                            .any(|account| account.error.is_some())
+                        {
+                            "Saved events, refresh failed"
+                        } else if self.syncing {
+                            "Syncing…"
                         } else {
-                            "Offline cache"
+                            "Up to date"
                         }
                     )),
             )

@@ -21,7 +21,6 @@ pub(super) fn icon_button(identifier: &'static str, path: &'static str) -> State
         .cursor_pointer()
         .text_color(rgb(MUTED))
         .hover(|style| style.bg(rgb(0xffffff).opacity(0.07)))
-        .on_click(move |_, _, _| calendar_telemetry::track("control_clicked", identifier))
         .child(svg().path(path).size(px(18.0)).text_color(rgb(0xbdbdbd)))
 }
 
@@ -32,7 +31,6 @@ pub(super) fn button(identifier: &'static str, label: &'static str) -> Stateful<
         .on_mouse_down(MouseButton::Left, |_, _, context| {
             context.stop_propagation()
         })
-        .on_click(move |_, _, _| calendar_telemetry::track("control_clicked", identifier))
         .flex()
         .items_center()
         .px_2()
@@ -91,4 +89,40 @@ pub(super) fn field(label: &'static str, input: impl IntoElement) -> Div {
                 .child(label),
         )
         .child(input)
+}
+
+pub(super) fn note(text: impl Into<SharedString>, color: u32) -> Div {
+    div()
+        .mb_3()
+        .text_size(px(11.0))
+        .text_color(rgb(color))
+        .child(text.into())
+}
+
+/// The non-modal event overlay: it keeps wheel and pointer events away from the calendar below.
+pub(super) fn popover(content: impl IntoElement) -> impl IntoElement {
+    div()
+        .absolute()
+        .id("event-popover")
+        .top(px(70.0))
+        .right(px(20.0))
+        .bottom(px(20.0))
+        .w(px(370.0))
+        .occlude()
+        .overflow_y_scroll()
+        .on_scroll_wheel(|_, _, context| context.stop_propagation())
+        .on_mouse_down(MouseButton::Left, |_, _, context| {
+            context.stop_propagation()
+        })
+        .child(
+            div()
+                .w_full()
+                .p_4()
+                .rounded_xl()
+                .bg(rgb(PANEL))
+                .border_1()
+                .border_color(rgb(0xffffff).opacity(0.1))
+                .shadow_lg()
+                .child(content),
+        )
 }

@@ -1,322 +1,396 @@
-#![cfg_attr(test, allow(dead_code))]
-use calendar_core::{CalendarEvent, EventCommand};
-use chrono::Datelike;
-use serde_json::{Value, json};
-const FIELDS: &str = "event_id:eventId calendar_id:calendarId title start end timezone all_day:allDay description location color revision read_only:readOnly";
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::time::Duration;
+//! Bridge between the UI and background work. The UI never touches the network, SQLite or the
+//! credential vault: it sends commands through a [`Handle`] and renders the [`Snapshot`]s that
+//! arrive on the update channel.
+//!
+//! Threads: one sync thread (the `calendar-sync` scheduler loop) for the process lifetime, plus a
+//! short-lived thread per sign-in or disconnect, because both block on the network. Each thread
+//! opens its own `Store`; SQLite runs in WAL mode so they do not block each other.
 
-#[derive(Clone, serde::Serialize, serde::Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct GoogleConnection {
-    pub configured: bool,
-    pub connected: bool,
-    pub event_access: bool,
-    pub account_key: String,
-    pub connecting: bool,
-    pub message: String,
-    pub calendars: Vec<GoogleCalendar>,
-    #[serde(default)]
-    pub accounts: Vec<GoogleAccount>,
+use async_channel::{Receiver, Sender};
+use calendar_core::CalendarEvent;
+use calendar_google::{CancelHandle, Config, Google, Permissions, SignIn, open_in_browser};
+use calendar_sync::{
+    CACHE_PAST, Error, Store, Syncer, WriteError, WriteRequest, Written, align_cache_zone,
+    data_directory,
+    scheduler::{self, Message, Mode},
+    system_zone,
+    vault::{SERVICE, Secret, Vault},
+};
+use chrono::{DateTime, Utc};
+use std::{
+    collections::{HashMap, VecDeque},
+    path::PathBuf,
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
+};
+
+pub mod snapshot;
+#[cfg(test)]
+mod tests;
+
+use snapshot::build_snapshot;
+pub use snapshot::{AccountView, Snapshot};
+
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
+pub enum SignInState {
+    #[default]
+    Idle,
+    /// The browser consent page is open; cancel or finish it there.
+    Waiting,
+    /// How the last attempt ended, for display.
+    Message(String),
 }
 
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GoogleAccount {
-    pub id: String,
-    pub name: String,
-    pub email: String,
-    pub picture: String,
-    pub event_access: bool,
-    pub write_access: bool,
-    pub connecting: bool,
-    pub message: String,
-    pub calendars: Vec<GoogleCalendar>,
-}
-
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GoogleCalendar {
-    pub id: String,
-    pub summary: String,
-    pub primary: bool,
-    pub background_color: String,
-    pub access_role: String,
-}
-
-impl GoogleCalendar {
-    pub fn color(&self) -> u32 {
-        u32::from_str_radix(self.background_color.trim_start_matches('#'), 16).unwrap_or(0x6ba5d7)
-    }
-}
-const GOOGLE_FIELDS: &str = "configured connected connecting eventAccess accountKey message calendars { id summary primary backgroundColor accessRole } accounts { id name email picture eventAccess writeAccess connecting message calendars { id summary primary backgroundColor accessRole } }";
-
-pub enum Request {
-    ConnectGoogle(Option<String>),
-    DisconnectGoogle(Option<String>),
-    Refresh,
-    ViewMonth(chrono::NaiveDate),
-    Save(Box<EventCommand>),
+/// How one write ended, matched to the request by `operation_id`.
+pub struct WriteResult {
+    pub operation_id: String,
+    /// `WriteError::Unknown` means the write may have been saved: keep it pending, do not retry.
+    /// The snapshot sent just before this result already includes a confirmed write.
+    pub outcome: Result<Written, WriteError>,
 }
 
 pub enum Update {
-    GoogleConnection(GoogleConnection),
-    GoogleError(String),
-    SyncStatus(bool, Option<String>),
-    AuthorizationUrl(String),
-    Diagnostics(Vec<calendar_telemetry::LogEntry>),
-    Snapshot(Vec<CalendarEvent>, bool),
-    Saved(CalendarEvent),
-    Failed(String),
-    Status(bool),
+    Snapshot(Snapshot),
+    Write(WriteResult),
+    Syncing(bool),
+    SignIn(SignInState),
+    /// The cache itself could not be read or written.
+    Error(String),
 }
 
-pub struct Connection {
-    pub sender: Sender<Request>,
-    pub receiver: Receiver<Update>,
+/// What the GPUI entity holds; views copy from it when it changes.
+#[derive(Default)]
+pub struct Model {
+    pub snapshot: Arc<Snapshot>,
+    pub syncing: bool,
+    pub sign_in: SignInState,
+    pub error: Option<String>,
+    /// Results the views have not handled yet; take them with `std::mem::take`.
+    pub finished_writes: Vec<WriteResult>,
 }
 
-pub fn start() -> Connection {
-    let (sender, requests) = mpsc::channel();
-    let (updates, receiver) = mpsc::channel();
-    std::thread::spawn(move || {
-        let runtime = tokio::runtime::Runtime::new().expect("worker runtime");
-        runtime.block_on(async move {
-            let _ = std::fs::create_dir_all(".local");
-            let cache = match sqlx::SqlitePool::connect("sqlite:.local/desktop.db?mode=rwc").await {
-                Ok(cache) => cache,
-                Err(error) => { let _ = updates.send(Update::Failed(format!("Cache unavailable: {error}"))); return; }
-            };
-            if let Err(error) = sqlx::raw_sql("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS journal (operation_id TEXT PRIMARY KEY, payload TEXT NOT NULL, status TEXT NOT NULL);").execute(&cache).await {
-                let _ = updates.send(Update::Failed(format!("Cache setup failed: {error}"))); return;
+impl Model {
+    pub fn apply(&mut self, update: Update) {
+        match update {
+            Update::Snapshot(snapshot) => {
+                self.snapshot = Arc::new(snapshot);
+                self.error = None;
             }
-            // Retire sample cache and pending preview writes; Google caches use account/range keys.
-            let _ = sqlx::query("DELETE FROM cache WHERE key='events'").execute(&cache).await;
-            let _ = sqlx::query("DELETE FROM journal WHERE json_extract(payload, '$.event.calendar_id') IN ('work','personal')").execute(&cache).await;
-            let mut connection: GoogleConnection = match sqlx::query_scalar::<_, String>("SELECT value FROM cache WHERE key='google-connection'").fetch_optional(&cache).await {
-                Ok(Some(value)) => serde_json::from_str(&value).unwrap_or_default(), _ => GoogleConnection::default(),
-            };
-            let _ = updates.send(Update::GoogleConnection(connection.clone()));
-            let mut month = chrono::Utc::now().with_timezone(&chrono_tz::Asia::Jakarta).date_naive().with_day(1).unwrap();
-            load_cached_range(&cache, &connection.account_key, month, &updates).await;
-            let client = reqwest::Client::builder().timeout(Duration::from_secs(90)).build().unwrap();
-            let mut next_request = Some(Request::Refresh);
-            loop {
-                let request = match next_request.take() {
-                    Some(request) => request,
-                    None => match requests.recv_timeout(Duration::from_secs(if connection.connecting { 2 } else { 30 })) {
-                        Ok(request) => request,
-                        Err(mpsc::RecvTimeoutError::Timeout) => Request::Refresh,
-                        Err(_) => break,
-                    }
-                };
-                match request {
-                    Request::ViewMonth(date) => {
-                        month = date.with_day(1).unwrap();
-                        load_cached_range(&cache, &connection.account_key, month, &updates).await;
-                        next_request = Some(Request::Refresh);
-                    }
-                    Request::ConnectGoogle(account_id) => {
-                        match query(&client, json!({"query": "mutation($account:String) { connectGoogle(accountId:$account) }", "variables":{"account":account_id}})).await {
-                            Ok(response) => if let Some(url) = response["connectGoogle"].as_str() { let _ = updates.send(Update::AuthorizationUrl(url.into())); },
-                            Err(error) => { let _ = updates.send(Update::GoogleError(error)); }
-                        }
-                        next_request = Some(Request::Refresh);
-                    }
-                    Request::DisconnectGoogle(account_id) => {
-                        if let Err(error) = query(&client, json!({"query": "mutation($account:String) { disconnectGoogle(accountId:$account) }", "variables":{"account":account_id}})).await {
-                            let _ = updates.send(Update::GoogleError(error));
-                        } else {
-                            connection = GoogleConnection::default();
-                            let _ = sqlx::query("DELETE FROM cache WHERE key LIKE 'google-%'").execute(&cache).await;
-                            let _ = updates.send(Update::Snapshot(Vec::new(), true));
-                        }
-                        next_request = Some(Request::Refresh);
-                    }
-                    Request::Refresh => {
-                        match query(&client, json!({"query": format!("{{ googleConnection {{ {GOOGLE_FIELDS} }} }}")})).await {
-                            Ok(response) => if let Ok(mut current) = serde_json::from_value::<GoogleConnection>(response["googleConnection"].clone()) {
-                                if current.connected && current.account_key.is_empty() {
-                                    let _ = updates.send(Update::Status(false));
-                                    let _ = updates.send(Update::SyncStatus(false, Some(current.message)));
-                                    continue;
-                                }
-                                if connection.account_key != current.account_key || !current.connected {
-                                    let _ = sqlx::query("DELETE FROM cache WHERE key LIKE 'google-events:%'").execute(&cache).await;
-                                    let _ = updates.send(Update::Snapshot(Vec::new(), true));
-                                }
-                                cache_profile_images(&client, &mut current).await;
-                                connection = current;
-                                let _ = sqlx::query("INSERT INTO cache VALUES ('google-connection',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(serde_json::to_string(&connection).unwrap()).execute(&cache).await;
-                                let _ = updates.send(Update::GoogleConnection(connection.clone()));
-                            },
-                            Err(_) => { let _ = updates.send(Update::Status(false)); continue; }
-                        }
-                        if let Ok(token) = std::fs::read_to_string(".local/session-token")
-                            && let Ok(response) = client.get("http://127.0.0.1:47821/diagnostics/logs").header("x-calendar-token", token.trim()).send().await
-                            && response.status().is_success()
-                            && let Ok(records) = response.json().await {
-                            let _ = updates.send(Update::Diagnostics(records));
-                        }
-                        if !connection.connected || !connection.event_access {
-                            let _ = updates.send(Update::Snapshot(Vec::new(), true));
-                            continue;
-                        }
-                        let _ = updates.send(Update::SyncStatus(true, None));
-                        let start_date = month - chrono::Duration::days(7);
-                        let end_date = month + chrono::Duration::days(49);
-                        let body = json!({"query": format!("query Events($start:String!,$end:String!) {{ events(startDate:$start,endDate:$end) {{ {FIELDS} }} }}"), "variables":{"start":start_date.to_string(),"end":end_date.to_string()}});
-                        match query(&client, body).await {
-                            Ok(response) => match serde_json::from_value::<Vec<CalendarEvent>>(response["events"].clone()) {
-                                Ok(events) => {
-                                    let _ = sqlx::query("INSERT INTO cache VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
-                                        .bind(range_key(&connection.account_key, month)).bind(serde_json::to_string(&events).unwrap()).execute(&cache).await;
-                                    let _ = updates.send(Update::Snapshot(events, true));
-                                    let _ = updates.send(Update::SyncStatus(false, None));
-                                },
-                                Err(_) => { let _ = updates.send(Update::SyncStatus(false, Some("Invalid calendar response.".into()))); }
-                            },
-                            Err(error) => { let _ = updates.send(Update::Status(false)); let _ = updates.send(Update::SyncStatus(false, Some(error))); }
-                        }
-                    }
-                    Request::Save(command) => {
-                        let payload = serde_json::to_string(&command).unwrap();
-                        if sqlx::query("INSERT OR REPLACE INTO journal VALUES (?, ?, 'pending')").bind(&command.operation_id).bind(payload).execute(&cache).await.is_err() {
-                            let _ = updates.send(Update::Failed("Could not journal this change; nothing was sent.".into())); continue;
-                        }
-                        let event = &command.event;
-                        let input = json!({"eventId":event.event_id,"calendarId":event.calendar_id,"title":event.title,
-                            "start":event.start.to_rfc3339(),"end":event.end.to_rfc3339(),"timezone":event.timezone,
-                            "allDay":event.all_day,"description":event.description,"location":event.location,
-                            "color":event.color,"revision":event.revision,"readOnly":event.read_only});
-                        let result = query(&client, json!({"query":format!("mutation Save($operationId:String!,$expectedRevision:Int!,$event:EventInput!) {{ saveEvent(operationId:$operationId,expectedRevision:$expectedRevision,event:$event) {{ {FIELDS} }} }}"),
-                            "variables":{"operationId":command.operation_id,"expectedRevision":command.expected_revision,"event":input}})).await;
-                        match result {
-                            Ok(response) => match serde_json::from_value::<CalendarEvent>(response["saveEvent"].clone()) {
-                                Ok(event) => {
-                                    let _ = sqlx::query("UPDATE journal SET status='confirmed' WHERE operation_id=?").bind(&command.operation_id).execute(&cache).await;
-                                    let _ = updates.send(Update::Saved(event));
-                                }
-                                Err(_) => { let _ = updates.send(Update::Failed("Unexpected server response. Refresh before retrying.".into())); }
-                            },
-                            Err(error) => {
-                                let _ = sqlx::query("UPDATE journal SET status='needs_reconciliation' WHERE operation_id=?").bind(&command.operation_id).execute(&cache).await;
-                                tracing::warn!(action="mutation_failed", operation_id=%command.operation_id, "Change needs reconciliation");
-                                let _ = updates.send(Update::Failed(error));
-                            }
-                        }
-                        next_request = Some(Request::Refresh);
-                    }
+            Update::Write(result) => self.finished_writes.push(result),
+            Update::Syncing(syncing) => self.syncing = syncing,
+            Update::SignIn(state) => self.sign_in = state,
+            Update::Error(message) => self.error = Some(message),
+        }
+    }
+}
+
+struct Inner {
+    /// `None`: sign-in is not configured in this build.
+    config: Option<Config>,
+    directory: Option<PathBuf>,
+    vault_service: String,
+    updates: Sender<Update>,
+    /// Last refresh error per account id; cleared by the next successful refresh.
+    errors: Mutex<HashMap<String, String>>,
+    connecting: AtomicBool,
+    cancel: Mutex<Option<CancelHandle>>,
+    /// Writes wait here for the sync thread, which owns the HTTP client and the access tokens.
+    writes: Mutex<VecDeque<WriteRequest>>,
+}
+
+/// Commands from the UI. Cheap to clone; every send ignores a stopped worker.
+#[derive(Clone)]
+pub struct Handle {
+    inner: Arc<Inner>,
+    sync: mpsc::Sender<Message>,
+}
+
+pub fn start() -> (Handle, Receiver<Update>) {
+    let (updates, receiver) = async_channel::unbounded();
+    let inner = Inner::new(
+        Config::from_environment(),
+        data_directory(),
+        SERVICE.into(),
+        updates,
+    );
+    let (sync, messages) = mpsc::channel();
+    let worker = inner.clone();
+    std::thread::Builder::new()
+        .name("calendar-sync".into())
+        .spawn(move || worker.run_sync(&messages))
+        .expect("spawn sync thread");
+
+    (Handle { inner, sync }, receiver)
+}
+
+impl Handle {
+    /// Window opened or focused. The scheduler skips it right after a sync.
+    pub fn sync_now(&self) {
+        let _ = self.sync.send(Message::SyncNow);
+    }
+
+    /// Queues a create, update or delete. It runs on the sync thread ahead of the next poll; the
+    /// outcome arrives as `Update::Write`. Reuse `operation_id` to retry an unknown outcome.
+    pub fn write(&self, request: WriteRequest) {
+        if self.inner.config.is_none() {
+            // No OAuth client, so there is no credential to write with.
+            return self.inner.send(Update::Write(WriteResult {
+                operation_id: request.operation_id,
+                outcome: Err(Error::Vault.into()),
+            }));
+        }
+
+        self.inner.writes.lock().unwrap().push_back(request);
+        let _ = self.sync.send(Message::Run);
+    }
+
+    /// Opens browser consent and waits for it on its own thread. One attempt at a time.
+    pub fn connect(&self) {
+        let Some(config) = self.inner.config.clone() else {
+            return;
+        };
+        if self.inner.connecting.swap(true, Ordering::SeqCst) {
+            return;
+        }
+
+        let (inner, sync) = (self.inner.clone(), self.sync.clone());
+        std::thread::spawn(move || {
+            let state = match inner.connect(config) {
+                Ok(notice) => {
+                    let _ = sync.send(Message::SyncNow);
+                    SignInState::Message(notice.into())
                 }
-            }
+                Err(error) => SignInState::Message(error),
+            };
+            *inner.cancel.lock().unwrap() = None;
+            inner.connecting.store(false, Ordering::SeqCst);
+            inner.send(Update::SignIn(state));
         });
-    });
-    Connection { sender, receiver }
-}
-
-fn range_key(account_key: &str, month: chrono::NaiveDate) -> String {
-    format!("google-events:{account_key}:{month}")
-}
-
-async fn load_cached_range(
-    cache: &sqlx::SqlitePool,
-    account_key: &str,
-    month: chrono::NaiveDate,
-    updates: &Sender<Update>,
-) {
-    let events = match sqlx::query_scalar::<_, String>("SELECT value FROM cache WHERE key=?")
-        .bind(range_key(account_key, month))
-        .fetch_optional(cache)
-        .await
-    {
-        Ok(Some(value)) => serde_json::from_str(&value).unwrap_or_default(),
-        _ => Vec::new(),
-    };
-    let _ = updates.send(Update::Snapshot(events, false));
-}
-
-#[cfg(test)]
-pub fn disconnected() -> Connection {
-    let (sender, _) = mpsc::channel();
-    let (_, receiver) = mpsc::channel();
-    Connection { sender, receiver }
-}
-
-#[tracing::instrument(skip_all, name = "backend_request")]
-async fn query(client: &reqwest::Client, body: Value) -> Result<Value, String> {
-    let token = std::fs::read_to_string(".local/session-token")
-        .map_err(|_| "Start the local backend to edit events.".to_string())?;
-    let mut request = client
-        .post("http://127.0.0.1:47821/graphql")
-        .header("x-calendar-token", token.trim());
-    request = request.json(&body);
-    for (key, value) in calendar_telemetry::outgoing_trace_headers() {
-        request = request.header(key, value);
     }
-    let response = request
-        .send()
-        .await
-        .map_err(|_| "Backend unavailable. Cached calendar is still readable.".to_string())?;
-    let status = response.status();
-    let response: Value = response
-        .json()
-        .await
-        .map_err(|_| "Invalid backend response".to_string())?;
-    if !status.is_success() {
-        return Err(response["message"]
-            .as_str()
-            .map(str::to_owned)
-            .unwrap_or_else(|| format!("Backend returned {status}")));
-    }
-    if let Some(error) = response["errors"]
-        .as_array()
-        .and_then(|errors| errors.first())
-    {
-        return Err(error["message"]
-            .as_str()
-            .unwrap_or("Unable to complete calendar operation")
-            .into());
-    }
-    Ok(response["data"].clone())
-}
 
-async fn cache_profile_images(client: &reqwest::Client, connection: &mut GoogleConnection) {
-    let Ok(directory) = std::env::current_dir().map(|path| path.join(".local/avatars")) else {
-        return;
-    };
-    if std::fs::create_dir_all(&directory).is_err() {
-        return;
-    }
-    for account in &mut connection.accounts {
-        if account.id != "desktop-account" && uuid::Uuid::parse_str(&account.id).is_err() {
-            account.picture.clear();
-            continue;
+    pub fn cancel_connect(&self) {
+        if let Some(cancel) = self.inner.cancel.lock().unwrap().as_ref() {
+            cancel.cancel();
         }
-        let path = directory.join(format!("{}.png", account.id));
-        if !path.exists() {
-            let valid = reqwest::Url::parse(&account.picture).is_ok_and(|url| {
-                url.scheme() == "https"
-                    && url
-                        .host_str()
-                        .is_some_and(|host| host.ends_with(".googleusercontent.com"))
-            });
-            if valid
-                && let Ok(response) = client
-                    .get(&account.picture)
-                    .timeout(Duration::from_secs(5))
-                    .send()
-                    .await
-                && response.status().is_success()
-                && let Ok(bytes) = response.bytes().await
-                && bytes.len() < 2_000_000
-            {
-                let _ = std::fs::write(&path, bytes);
+    }
+
+    /// Removes the credential and every cached row of the account, then revokes at Google.
+    pub fn disconnect(&self, account_id: String) {
+        let inner = self.inner.clone();
+        std::thread::spawn(move || inner.disconnect(&account_id));
+    }
+
+    /// A handle whose worker never runs, for view tests.
+    #[cfg(test)]
+    pub fn disconnected() -> Self {
+        let (updates, _) = async_channel::unbounded();
+        let (sync, _) = mpsc::channel();
+
+        Self {
+            inner: Inner::new(None, None, "calendar.test.unused".into(), updates),
+            sync,
+        }
+    }
+}
+
+impl Inner {
+    fn new(
+        config: Option<Config>,
+        directory: Option<PathBuf>,
+        vault_service: String,
+        updates: Sender<Update>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            config,
+            directory,
+            vault_service,
+            updates,
+            errors: Mutex::default(),
+            connecting: AtomicBool::new(false),
+            cancel: Mutex::default(),
+            writes: Mutex::default(),
+        })
+    }
+
+    fn send(&self, update: Update) {
+        let _ = self.updates.send_blocking(update);
+    }
+
+    fn open_store(&self) -> Result<Store, String> {
+        let directory = self
+            .directory
+            .as_deref()
+            .ok_or("No data directory: LOCALAPPDATA is not set.")?;
+
+        Store::open(directory).map_err(|error| error.to_string())
+    }
+
+    /// Sends the current cache contents to the UI.
+    fn publish(&self, store: &Store, vault: &Vault) {
+        let errors = self.errors.lock().unwrap().clone();
+        match build_snapshot(store, vault, &errors, self.config.is_some(), Utc::now()) {
+            Ok(snapshot) => self.send(Update::Snapshot(snapshot)),
+            Err(error) => {
+                tracing::warn!(action = "snapshot_failed", error = %error);
+                self.send(Update::Error(error.to_string()));
             }
         }
-        account.picture = if path.exists() {
-            path.to_string_lossy().into_owned()
-        } else {
-            String::new()
+    }
+
+    /// Cached events go out before the first network call, then every sync result follows.
+    fn run_sync(&self, messages: &mpsc::Receiver<Message>) {
+        let mut store = match self.open_store() {
+            Ok(store) => store,
+            Err(error) => return self.send(Update::Error(error)),
+        };
+        let vault = Vault::new(&self.vault_service);
+        // The first snapshot already carries the zone the system uses now.
+        if let Err(error) = align_cache_zone(&mut store, system_zone()) {
+            self.send(Update::Error(error.to_string()));
+        }
+        self.publish(&store, &vault);
+        let Some(config) = self.config.clone() else {
+            return;
+        };
+
+        let mut syncer = Syncer::new(Google::new(config));
+        scheduler::run(Mode::WindowOpen, messages, || {
+            // Each `Message::Run` queued one write: do it instead of a poll.
+            let queued = self.writes.lock().unwrap().pop_front();
+            if let Some(request) = queued {
+                let outcome = syncer.write(&mut store, &request, refresh_token(&vault));
+                self.publish(&store, &vault);
+                self.send(Update::Write(WriteResult {
+                    operation_id: request.operation_id,
+                    outcome,
+                }));
+                return;
+            }
+
+            self.send(Update::Syncing(true));
+            if let Err(error) = refresh(&mut syncer, &mut store, &vault, &self.errors, Utc::now()) {
+                self.send(Update::Error(error.to_string()));
+            }
+            self.publish(&store, &vault);
+            self.send(Update::Syncing(false));
+        });
+    }
+
+    fn connect(&self, config: Config) -> Result<&'static str, String> {
+        let google = Google::new(config);
+        let sign_in = google.begin_sign_in().map_err(|error| error.to_string())?;
+        *self.cancel.lock().unwrap() = Some(sign_in.cancel_handle());
+        open_in_browser(sign_in.authorization_url()).map_err(|error| error.to_string())?;
+        self.send(Update::SignIn(SignInState::Waiting));
+
+        let store = self.open_store()?;
+        let vault = Vault::new(&self.vault_service);
+        let notice =
+            finish_sign_in(&google, sign_in, &store, &vault).map_err(|error| error.to_string())?;
+        self.publish(&store, &vault);
+
+        Ok(notice)
+    }
+
+    fn disconnect(&self, account_id: &str) {
+        let vault = Vault::new(&self.vault_service);
+        let removed = self
+            .open_store()
+            .and_then(|store| {
+                let token = remove_account(&store, &vault, account_id)
+                    .map_err(|error| error.to_string())?;
+                self.errors.lock().unwrap().remove(account_id);
+                self.publish(&store, &vault);
+
+                Ok(token)
+            })
+            .inspect_err(|error| self.send(Update::Error(error.clone())));
+        tracing::info!(
+            action = "account_disconnected",
+            account_id,
+            removed = removed.is_ok()
+        );
+
+        // Local data is already gone; revoking is best effort and may take a while.
+        if let (Ok(Some(token)), Some(config)) = (removed, self.config.clone()) {
+            let outcome = Google::new(config).revoke(&token);
+            tracing::info!(action = "account_revoked", succeeded = outcome.is_ok());
+        }
+    }
+}
+
+/// Reads an account's refresh token from the vault; `None` when it is missing or unreadable.
+fn refresh_token(vault: &Vault) -> impl Fn(&str) -> Option<String> + '_ {
+    |account_id| {
+        vault
+            .load(account_id)
+            .ok()
+            .flatten()
+            .map(|secret| secret.refresh_token)
+    }
+}
+
+/// Runs one sync of every cached account and records each account's outcome.
+fn refresh(
+    syncer: &mut Syncer,
+    store: &mut Store,
+    vault: &Vault,
+    errors: &Mutex<HashMap<String, String>>,
+    now: DateTime<Utc>,
+) -> Result<(), Error> {
+    let outcomes = syncer.sync_all(store, now, refresh_token(vault))?;
+
+    let mut errors = errors.lock().unwrap();
+    for outcome in outcomes {
+        match outcome.result {
+            Ok(()) => errors.remove(&outcome.account_id),
+            Err(error) => errors.insert(outcome.account_id, error.to_string()),
         };
     }
+
+    Ok(())
+}
+
+/// Waits for the consent redirect and stores the account. Nothing is written when consent fails,
+/// so existing accounts are untouched; a repeat sign-in updates the stored credential in place.
+fn finish_sign_in(
+    google: &Google,
+    sign_in: SignIn,
+    store: &Store,
+    vault: &Vault,
+) -> Result<&'static str, Error> {
+    let existing: Vec<String> = store
+        .accounts()?
+        .into_iter()
+        .map(|account| account.account_id)
+        .collect();
+    let signed_in = google.complete_sign_in(sign_in, &existing)?;
+    let credentials = signed_in.credentials;
+
+    vault.save(
+        &credentials.account.account_id,
+        &Secret {
+            refresh_token: credentials.refresh_token,
+            scope: credentials.scope,
+        },
+    )?;
+    store.upsert_account(&credentials.account)?;
+
+    Ok(if signed_in.already_connected {
+        "That account was already connected. Its access was refreshed."
+    } else {
+        "Account connected. Fetching calendars…"
+    })
+}
+
+/// Deletes the credential, then the cached rows. Returns the refresh token to revoke, if any.
+fn remove_account(store: &Store, vault: &Vault, account_id: &str) -> Result<Option<String>, Error> {
+    let secret = vault.load(account_id).ok().flatten();
+    vault.delete(account_id)?;
+    store.remove_account(account_id)?;
+
+    Ok(secret.map(|secret| secret.refresh_token))
 }

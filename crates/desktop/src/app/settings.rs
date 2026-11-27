@@ -22,7 +22,7 @@ impl CalendarApp {
             })
             .on_scroll_wheel(|_, _, context| context.stop_propagation())
             .children(
-                self.google_connection
+                self.snapshot
                     .accounts
                     .iter()
                     .enumerate()
@@ -62,18 +62,13 @@ impl CalendarApp {
                         context.notify();
                     })),
             )
-            .when(!self.google_connection.accounts.is_empty(), |element| {
+            .when(!self.snapshot.accounts.is_empty(), |element| {
                 element.child(
                     button("logout", "Log out of this account")
                         .w_full()
                         .on_click(context.listener(|app, _, _, context| {
-                            if let Some(account) =
-                                app.google_connection.accounts.get(app.active_account)
-                            {
-                                let _ = app
-                                    .connection
-                                    .sender
-                                    .send(Request::DisconnectGoogle(Some(account.id.clone())));
+                            if let Some(account) = app.snapshot.accounts.get(app.active_account) {
+                                app.handle.disconnect(account.account_id.clone());
                             }
                             app.profile_open = false;
                             app.active_account = 0;
@@ -83,65 +78,145 @@ impl CalendarApp {
             })
     }
 
+    /// Re-aligns the shown week to the new first day, then remembers the choice.
+    pub(super) fn set_week_start(&mut self, sunday_first: bool, context: &mut Context<Self>) {
+        if self.preferences.sunday_first == sunday_first {
+            return;
+        }
+        self.preferences.sunday_first = sunday_first;
+        if !self.month_view {
+            self.date = week_start(self.date, sunday_first);
+        }
+        self.horizontal_fraction = 0.0;
+        self.preferences.save();
+        context.notify();
+    }
+
+    pub(super) fn set_tray_all_day(&mut self, tray_all_day: bool, context: &mut Context<Self>) {
+        self.preferences.tray_all_day = tray_all_day;
+        self.preferences.save();
+        context.notify();
+    }
+
+    pub(super) fn choice(
+        identifier: &'static str,
+        label: &'static str,
+        selected: bool,
+    ) -> Stateful<Div> {
+        button(identifier, label)
+            .px_3()
+            .bg(rgb(if selected { FIELD } else { DIALOG }))
+            .border_1()
+            .border_color(rgb(BORDER))
+    }
+
+    /// A title and description on the left, the control on the right.
+    pub(super) fn setting_row(
+        title: &'static str,
+        description: &'static str,
+        control: impl IntoElement,
+    ) -> Div {
+        div()
+            .flex()
+            .items_center()
+            .gap_6()
+            .py_3()
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .child(div().font_weight(FontWeight::SEMIBOLD).child(title))
+                    .child(
+                        div()
+                            .text_size(px(12.0))
+                            .text_color(rgb(MUTED))
+                            .child(description),
+                    ),
+            )
+            .child(control)
+    }
+
+    fn general_section(
+        &self,
+        content: Stateful<Div>,
+        context: &mut Context<Self>,
+    ) -> Stateful<Div> {
+        let sunday_first = self.preferences.sunday_first;
+        let tray_all_day = self.preferences.tray_all_day;
+        let heading = |text: &'static str| {
+            div()
+                .text_size(px(20.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .mb_2()
+                .child(text)
+        };
+        content
+            .child(heading("Calendar view"))
+            .child(Self::setting_row(
+                "Start week on",
+                "First day of the week in every view",
+                div()
+                    .flex()
+                    .gap_1()
+                    .child(
+                        Self::choice("week-start-monday", "Monday", !sunday_first).on_click(
+                            context
+                                .listener(|app, _, _, context| app.set_week_start(false, context)),
+                        ),
+                    )
+                    .child(
+                        Self::choice("week-start-sunday", "Sunday", sunday_first).on_click(
+                            context
+                                .listener(|app, _, _, context| app.set_week_start(true, context)),
+                        ),
+                    ),
+            ))
+            .child(
+                div()
+                    .py_3()
+                    .border_t_1()
+                    .border_color(rgb(BORDER))
+                    .text_size(px(12.0))
+                    .text_color(rgb(MUTED))
+                    .child(format!(
+                        "Display time zone: {} (system)",
+                        self.timezone.name()
+                    )),
+            )
+            .child(div().mt_4().child(heading("Tray list")))
+            .child(Self::setting_row(
+                "All-day events",
+                "Show all-day events in the list that opens from the tray icon",
+                div()
+                    .flex()
+                    .gap_1()
+                    .child(
+                        Self::choice("tray-all-day-on", "Show", tray_all_day)
+                            .on_click(context.listener(|app, _, _, context| {
+                                app.set_tray_all_day(true, context)
+                            })),
+                    )
+                    .child(
+                        Self::choice("tray-all-day-off", "Hide", !tray_all_day).on_click(
+                            context.listener(|app, _, _, context| {
+                                app.set_tray_all_day(false, context)
+                            }),
+                        ),
+                    ),
+            ))
+    }
+
     pub(super) fn settings(&self, context: &mut Context<Self>) -> impl IntoElement {
-        let mut content = div()
+        let content = div()
             .flex_1()
             .min_w_0()
             .p_6()
             .id("settings-content")
             .overflow_y_scroll();
-        content = match self.settings_section.as_str() {
-            "profile" => content.child(div().text_size(px(22.0)).font_weight(FontWeight::SEMIBOLD).mb_6().child("Profile"))
-                .children(self.google_connection.accounts.iter().map(|account| {
-                    div().mb_6().flex().gap_4().items_center()
-                        .child(div().size(px(64.0)).rounded_full().overflow_hidden().bg(rgb(0x3c526a))
-                            .when(!account.picture.is_empty(), |element| element.child(img(std::path::PathBuf::from(account.picture.clone())).size_full().object_fit(ObjectFit::Cover))))
-                        .child(div().child(account.name.clone()).child(div().text_color(rgb(MUTED)).child(account.email.clone())))
-                })),
-            "tray" => content.child(div().text_size(px(22.0)).mb_6().child("Tray calendar"))
-                .child(div().mb_4().text_color(rgb(MUTED)).child("Click the tray icon to see today's schedule and upcoming events."))
-                .child(button("tray-all-day",if self.preferences.tray_all_day { "All-day events: On" } else { "All-day events: Off" })
-                    .on_click(context.listener(|app,_,_,context| { app.preferences.tray_all_day = !app.preferences.tray_all_day; app.preferences.save(); context.notify(); })))
-                .child(div().mt_4().text_color(rgb(MUTED)).child("Changes apply when the tray calendar is next opened.")),
-            "accounts" => content.child(div().text_size(px(22.0)).mb_4().child("Google accounts"))
-                .child(div().text_size(px(12.0)).mb_4().text_color(rgb(MUTED)).child("Connect accounts and approve calendar access. Changes save directly to Google."))
-                .children(self.google_connection.accounts.iter().enumerate().map(|(index, account)| {
-                    let reconnect_id = account.id.clone();
-                    let disconnect_id = account.id.clone();
-                    div().mb_4().p_4().border_1().border_color(rgb(0x393939)).rounded_lg()
-                        .child(div().font_weight(FontWeight::SEMIBOLD).child(account.email.clone()))
-                        .child(div().mt_2().text_size(px(12.0)).text_color(rgb(MUTED)).child(if account.connecting { "Finish sign-in in your browser.".into() } else if account.write_access { "Calendar access enabled".into() } else { account.message.clone() }))
-                        .child(div().mt_3().children(account.calendars.iter().map(|calendar| div().py_1().text_size(px(12.0)).child(calendar.summary.clone()))))
-                        .child(div().flex().gap_3().mt_3()
-                            .child(div().id(SharedString::from(format!("reconnect-{index}"))).px_3().py_2().rounded_md().bg(rgb(0x343434)).cursor_pointer()
-                                .child(if account.connecting { "Waiting for Google…" } else if account.write_access { "Reconnect" } else { "Approve calendar access" })
-                                .on_click(context.listener(move |app,_,_,context| {
-                                    let _ = app.connection.sender.send(Request::ConnectGoogle(Some(reconnect_id.clone())));
-                                    context.notify();
-                                })))
-                            .child(div().id(SharedString::from(format!("disconnect-{index}"))).px_3().py_2().rounded_md().cursor_pointer().text_color(rgb(0xe99a91))
-                                .child(if account.connecting { "Cancel sign-in" } else { "Disconnect" })
-                                .on_click(context.listener(move |app,_,_,context| {
-                                    let _ = app.connection.sender.send(Request::DisconnectGoogle(Some(disconnect_id.clone())));
-                                    context.notify();
-                                }))))
-                }))
-                .child(button("add-google","+ Add Google account").on_click(context.listener(|app,_,_,context| {
-                    let _ = app.connection.sender.send(Request::ConnectGoogle(None)); context.notify();
-                })))
-                .child(div().mt_3().text_size(px(12.0)).text_color(rgb(MUTED)).child(self.google_connection.message.clone()))
-                .when_some(self.sync_error.clone(), |element,error| element.child(div().mt_3().text_color(rgb(0xe99a91)).child(error))),
-            _ => content.child(div().text_size(px(22.0)).mb_6().font_weight(FontWeight::SEMIBOLD).child("Calendar view"))
-                .child(div().mb_2().child("Start week on"))
-                .child(button("week-start",if self.preferences.sunday_first { "Sunday   ▾" } else { "Monday   ▾" })
-                    .w(px(220.0)).bg(rgb(0x303030)).on_click(context.listener(|app,_,_,context| {
-                        app.preferences.sunday_first = !app.preferences.sunday_first;
-                        app.preferences.save(); app.go_today(); context.notify();
-                    })))
-                .child(div().mt_6().mb_2().text_size(px(20.0)).child("Calendar navigation"))
-                .child(div().text_color(rgb(MUTED)).child("T — Current week    W — Week view    M — Month view"))
-                .child(div().mt_4().text_color(rgb(MUTED)).child("Scroll horizontally to move freely between days. Shift + wheel works with a mouse."))
-                .child(div().mt_6().text_color(rgb(MUTED)).child("Display time zone: Asia/Jakarta · GMT+7")),
+        let content = match self.settings_section.as_str() {
+            "accounts" => self.accounts_section(content, context),
+            "working-hours" => self.working_hours_section(content, context),
+            _ => self.general_section(content, context),
         };
         div()
             .id("settings-overlay")
@@ -163,28 +238,27 @@ impl CalendarApp {
                     .flex()
                     .rounded_xl()
                     .overflow_hidden()
-                    .bg(rgb(0x242424))
+                    .bg(rgb(DIALOG))
                     .border_1()
-                    .border_color(rgb(0x393939))
+                    .border_color(rgb(BORDER))
                     .shadow_lg()
                     .child(
                         div()
                             .w(px(235.0))
                             .flex_shrink_0()
                             .p_3()
-                            .bg(rgb(0x202020))
+                            .bg(rgb(NAVIGATION))
                             .child(
                                 div()
                                     .p_2()
                                     .text_size(px(12.0))
                                     .text_color(rgb(MUTED))
-                                    .child("Account"),
+                                    .child("Settings"),
                             )
                             .children(
                                 [
                                     ("general", "General"),
-                                    ("profile", "Profile"),
-                                    ("tray", "Tray calendar"),
+                                    ("working-hours", "Working hours"),
                                     ("accounts", "Google accounts"),
                                 ]
                                 .into_iter()
@@ -193,12 +267,15 @@ impl CalendarApp {
                                         .w_full()
                                         .mb_1()
                                         .when(self.settings_section == section, |element| {
-                                            element.bg(rgb(0x303030))
+                                            element.bg(rgb(FIELD))
                                         })
-                                        .on_click(context.listener(move |app, _, _, context| {
-                                            app.settings_section = section.into();
-                                            context.notify();
-                                        }))
+                                        .on_click(context.listener(
+                                            move |app, _, window, context| {
+                                                app.select_settings_section(
+                                                    section, window, context,
+                                                );
+                                            },
+                                        ))
                                 }),
                             ),
                     )
@@ -209,7 +286,7 @@ impl CalendarApp {
                             .top(px(8.0))
                             .right(px(8.0))
                             .on_click(context.listener(|app, _, window, context| {
-                                app.settings_open = false;
+                                app.close_settings();
                                 app.focus.focus(window, context);
                                 context.notify();
                             })),

@@ -41,7 +41,7 @@ impl CalendarApp {
     }
 
     pub(super) fn scroll_dates(&mut self, delta: f32, day_width: f32, context: &mut Context<Self>) {
-        if self.gesture.is_some() || !delta.is_finite() {
+        if !delta.is_finite() {
             return;
         }
         let position = self.horizontal_fraction - delta / day_width;
@@ -86,7 +86,6 @@ impl CalendarApp {
     }
 
     pub(super) fn navigate(&mut self, days: i64, context: &mut Context<Self>) {
-        calendar_telemetry::track("control_clicked", "week_navigation");
         self.date = if self.month_view {
             let first = self.date.with_day(1).unwrap();
             if days < 0 {

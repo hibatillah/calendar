@@ -1,0 +1,1 @@
+- [Tooling gotchas](feedback_tooling_gotchas.md) — cargo.sh cds to repo root (use --manifest-path for probes), rm -f, RTK-filtered output
